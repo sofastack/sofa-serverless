@@ -1,0 +1,59 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: manager-role
+rules:
+- apiGroups:
+  - sofaserverless.sofastack.tech
+  resources:
+  - moduledeployments
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - sofaserverless.sofastack.tech
+  resources:
+  - moduledeployments/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - sofaserverless.sofastack.tech
+  resources:
+  - moduledeployments/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - sofaserverless.sofastack.tech
+  resources:
+  - modules
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - sofaserverless.sofastack.tech
+  resources:
+  - modules/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - sofaserverless.sofastack.tech
+  resources:
+  - modules/status
+  verbs:
+  - get
+  - patch
+  - update
