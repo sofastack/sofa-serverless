@@ -1,0 +1,5 @@
+## Append samples of your project ##
+resources:
+- sofaserverless_v1alpha1_moduledeployment.yaml
+- sofaserverless_v1alpha1_module.yaml
+#+kubebuilder:scaffold:manifestskustomizesamples

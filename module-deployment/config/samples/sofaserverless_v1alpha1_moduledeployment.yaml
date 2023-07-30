@@ -1,0 +1,12 @@
+apiVersion: sofaserverless.sofastack.tech/v1alpha1
+kind: ModuleDeployment
+metadata:
+  labels:
+    app.kubernetes.io/name: moduledeployment
+    app.kubernetes.io/instance: moduledeployment-sample
+    app.kubernetes.io/part-of: module-deployment
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: module-deployment
+  name: moduledeployment-sample
+spec:
+  # TODO(user): Add fields here

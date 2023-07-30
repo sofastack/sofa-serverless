@@ -56,6 +56,12 @@ type Module struct {
 	Status ModuleStatus `json:"status,omitempty"`
 }
 
+type ModuleTemplate struct {
+	metav1.ObjectMeta `json:"metadata,omitempty"`
+
+	Spec ModuleSpec `json:"spec,omitempty"`
+}
+
 //+kubebuilder:object:root=true
 
 // ModuleList contains a list of Module
