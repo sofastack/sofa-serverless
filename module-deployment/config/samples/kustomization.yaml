@@ -2,4 +2,5 @@
 resources:
 - sofaserverless_v1alpha1_moduledeployment.yaml
 - sofaserverless_v1alpha1_module.yaml
+- sofaserverless_v1alpha1_modulereplicaset.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples

@@ -26,4 +26,13 @@ resources:
   kind: Module
   path: sofastack.tech/sofa-serverless/operator/api/v1alpha1
   version: v1alpha1
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
+  domain: sofastack.tech
+  group: sofaserverless
+  kind: ModuleReplicaSet
+  path: sofastack.tech/sofa-serverless/operator/api/v1alpha1
+  version: v1alpha1
 version: "3"
