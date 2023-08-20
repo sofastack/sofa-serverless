@@ -21,6 +21,8 @@ import (
 	"fmt"
 	"math"
 	"strconv"
+	"strings"
+	"sync"
 	"time"
 
 	v1 "k8s.io/api/apps/v1"
@@ -30,6 +32,8 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/util/workqueue"
 	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -45,7 +49,10 @@ import (
 // ModuleDeploymentReconciler reconciles a ModuleDeployment object
 type ModuleDeploymentReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme        *runtime.Scheme
+	DelayingQueue workqueue.DelayingInterface
+	Set           map[string][]int32
+	mutex         sync.Mutex
 }
 
 //+kubebuilder:rbac:groups=serverless.alipay.com,resources=moduledeployments,verbs=get;list;watch;create;update;patch;delete
@@ -126,6 +133,21 @@ func (r *ModuleDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 			if err := r.Status().Update(ctx, moduleDeployment); err != nil {
 				return ctrl.Result{}, err
 			}
+		}
+	case moduledeploymentv1alpha1.ModuleDeploymentReleaseProgressWaitingForConfirmation:
+		moduleDeployment.Status.ReleaseStatus.Progress = moduledeploymentv1alpha1.ModuleDeploymentReleaseProgressPaused
+		if err := r.Status().Update(ctx, moduleDeployment); err != nil {
+			return ctrl.Result{}, err
+		}
+	case moduledeploymentv1alpha1.ModuleDeploymentReleaseProgressPaused:
+		moduleDeployment.Spec.Pause = true
+		if err := r.Update(ctx, moduleDeployment); err != nil {
+			return ctrl.Result{}, err
+		}
+
+		moduleDeployment.Status.ReleaseStatus.Progress = moduledeploymentv1alpha1.ModuleDeploymentReleaseProgressExecuting
+		if err := r.Status().Update(ctx, moduleDeployment); err != nil {
+			return ctrl.Result{}, err
 		}
 	}
 
@@ -411,8 +433,61 @@ func (r *ModuleDeploymentReconciler) createNewReplicaSet(ctx context.Context, mo
 	return moduleReplicaSet, nil
 }
 
+type waitingLoop struct {
+	*ModuleDeploymentReconciler
+}
+
+func (w *waitingLoop) Start(ctx context.Context) error {
+	for i := 0; i < 3; i++ {
+		go wait.Until(w.worker, time.Second, ctx.Done())
+	}
+	return nil
+}
+
+func (w *waitingLoop) worker() {
+	for w.processItem() {
+	}
+}
+
+func (w *waitingLoop) processItem() bool {
+	item, shutdown := w.DelayingQueue.Get()
+	if shutdown {
+		return false
+	}
+
+	defer w.DelayingQueue.Done(item)
+
+	_ = w.HandleDelayingItem(item.(string))
+	return true
+}
+
+func (r *ModuleDeploymentReconciler) HandleDelayingItem(key string) error {
+	arr := strings.Split(key, "/")
+	if len(arr) != 2 {
+		return fmt.Errorf("invalid key %v", key)
+	}
+	moduleDeployment := &moduledeploymentv1alpha1.ModuleDeployment{}
+	name, namespace := arr[0], arr[1]
+	err := r.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, moduleDeployment)
+	if err != nil {
+		if errors.IsNotFound(err) {
+			return nil
+		}
+		log.Log.Error(err, "get moduleDeployment failed")
+		return err
+	}
+	if moduleDeployment.Spec.Pause {
+		moduleDeployment.Spec.Pause = false
+		if err = r.Update(context.TODO(), moduleDeployment); err != nil {
+			log.Log.Error(err, "update moduleDeployment failed")
+		}
+	}
+	return err
+}
+
 // SetupWithManager sets up the controller with the Manager.
 func (r *ModuleDeploymentReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	mgr.Add(&waitingLoop{r})
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&moduledeploymentv1alpha1.ModuleDeployment{}).
 		Complete(r)
