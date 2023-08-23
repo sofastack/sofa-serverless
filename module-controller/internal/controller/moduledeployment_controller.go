@@ -21,6 +21,7 @@ import (
 	"fmt"
 	moduledeploymentv1alpha1 "github.com/sofastack/sofa-serverless/api/v1alpha1"
 	"github.com/sofastack/sofa-serverless/internal/controller/utils"
+	"github.com/sofastack/sofa-serverless/internal/controller/validation"
 	v1 "k8s.io/api/apps/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -109,6 +110,16 @@ func (r *ModuleDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		return ctrl.Result{}, nil
 	}
 
+	moduleDeploymentCheckFailed := validation.ModuleDeploymentCheck(moduleDeployment)
+	if moduleDeploymentCheckFailed {
+		err := r.Status().Update(context.TODO(), moduleDeployment)
+		if err != nil {
+			log.Log.Error(err, "Failed to update moduleDeployment Status", "moduleDeploymentName", moduleDeployment.Name)
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
+
 	// update moduleDeployment owner reference
 	moduleDeploymentOwnerReferenceExist := false
 	for _, ownerReference := range moduleDeployment.GetOwnerReferences() {
@@ -122,6 +133,13 @@ func (r *ModuleDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		err := r.Client.Get(ctx, types.NamespacedName{Namespace: req.Namespace, Name: moduleDeployment.Spec.DeploymentName}, deployment)
 		if err != nil {
 			log.Log.Error(err, "Failed to get deployment", "deploymentName", deployment.Name)
+			deploymentCheckFailed := validation.DeploymentCheck(err, moduleDeployment, deployment)
+			if deploymentCheckFailed {
+				err := r.Status().Update(context.TODO(), moduleDeployment)
+				if err != nil {
+					return ctrl.Result{}, err
+				}
+			}
 			return ctrl.Result{}, err
 		}
 		ownerReference := moduleDeployment.GetOwnerReferences()
@@ -148,10 +166,21 @@ func (r *ModuleDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		return ctrl.Result{}, err
 	}
 
+	if moduleReplicaSet == nil {
+		return ctrl.Result{}, nil
+	}
 	// update moduleReplicaSet
 	err = r.updateModuleReplicas(moduleDeployment, moduleReplicaSet)
 	if err != nil {
 		return ctrl.Result{}, err
+	}
+	// finish update status remove all failed conditions
+	if len(moduleDeployment.Status.Conditions) > 0 {
+		moduleDeployment.Status = moduledeploymentv1alpha1.ModuleDeploymentStatus{}
+		err := r.Status().Update(context.TODO(), moduleDeployment)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
 	}
 	return ctrl.Result{}, nil
 }
@@ -168,30 +197,40 @@ func (r *ModuleDeploymentReconciler) createOrGetModuleReplicas(moduleDeployment 
 	var err error
 	moduleReplicaSet := &moduledeploymentv1alpha1.ModuleReplicaSet{}
 	moduleReplicaSetName := getModuleReplicasName(moduleDeployment.Name)
+	moduleReplicas := moduleDeployment.Spec.Replicas
 	for i := 0; i < 3; i++ {
 		err = r.Client.Get(context.TODO(), types.NamespacedName{Namespace: moduleDeployment.Namespace, Name: moduleReplicaSetName}, moduleReplicaSet)
-		if err != nil {
-			log.Log.Info("get module replicaSet failed", "name", moduleReplicaSetName, "error", err)
-			if errors.IsNotFound(err) {
-				log.Log.Info("moduleReplicaSet is not exist", "name", moduleReplicaSetName)
-				deployment := &v1.Deployment{}
-				err := r.Client.Get(context.TODO(), types.NamespacedName{Namespace: moduleDeployment.Namespace, Name: moduleDeployment.Spec.DeploymentName}, deployment)
-				if err != nil {
-					log.Log.Error(err, "Failed to get deployment", "deploymentName", deployment.Name)
-					continue
-				}
-				moduleReplicaSet := r.generateModuleReplicas(moduleDeployment, deployment)
-				err = r.Client.Create(context.TODO(), moduleReplicaSet)
-				if err != nil {
-					log.Log.Error(err, "Failed to create moduleReplicaSet", "moduleReplicaSetName", moduleReplicaSet.Name)
-					continue
-				}
-				log.Log.Info("finish to create a new one", "moduleReplicaSetName", moduleReplicaSet.Name)
-				return moduleReplicaSet, nil
-			}
-		} else {
+		if err == nil {
 			return moduleReplicaSet, nil
 		}
+		log.Log.Info("get module replicaSet failed", "name", moduleReplicaSetName, "error", err)
+		if !errors.IsNotFound(err) {
+			continue
+		}
+		log.Log.Info("moduleReplicaSet is not exist", "name", moduleReplicaSetName)
+		deployment := &v1.Deployment{}
+		err := r.Client.Get(context.TODO(), types.NamespacedName{Namespace: moduleDeployment.Namespace, Name: moduleDeployment.Spec.DeploymentName}, deployment)
+		if err != nil {
+			log.Log.Error(err, "Failed to get deployment", "deploymentName", deployment.Name)
+			continue
+		}
+		// check Replicas
+		replicasCheckFailed := validation.ReplicasCheck(moduleDeployment, deployment, moduleReplicas)
+		if replicasCheckFailed {
+			err := r.Status().Update(context.TODO(), moduleDeployment)
+			if err != nil {
+				return moduleReplicaSet, err
+			}
+			return nil, nil
+		}
+		moduleReplicaSet := r.generateModuleReplicas(moduleDeployment, deployment)
+		err = r.Client.Create(context.TODO(), moduleReplicaSet)
+		if err != nil {
+			log.Log.Error(err, "Failed to create moduleReplicaSet", "moduleReplicaSetName", moduleReplicaSet.Name)
+			continue
+		}
+		log.Log.Info("finish to create a new one", "moduleReplicaSetName", moduleReplicaSet.Name)
+		return moduleReplicaSet, nil
 	}
 	return moduleReplicaSet, err
 }
