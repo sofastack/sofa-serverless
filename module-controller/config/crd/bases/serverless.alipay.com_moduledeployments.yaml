@@ -101,12 +101,12 @@ spec:
                             minLength: 1
                           type:
                             type: string
-                            minLength: 1
                           url:
                             type: string
                             format: uri
                           version:
                             type: string
+                            minLength: 1
                         required:
                         - name
                         - url
