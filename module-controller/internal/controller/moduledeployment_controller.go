@@ -110,16 +110,6 @@ func (r *ModuleDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		return ctrl.Result{}, nil
 	}
 
-	moduleDeploymentCheckFailed := validation.ModuleDeploymentCheck(moduleDeployment)
-	if moduleDeploymentCheckFailed {
-		err := r.Status().Update(context.TODO(), moduleDeployment)
-		if err != nil {
-			log.Log.Error(err, "Failed to update moduleDeployment Status", "moduleDeploymentName", moduleDeployment.Name)
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{}, nil
-	}
-
 	// update moduleDeployment owner reference
 	moduleDeploymentOwnerReferenceExist := false
 	for _, ownerReference := range moduleDeployment.GetOwnerReferences() {
@@ -133,8 +123,8 @@ func (r *ModuleDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		err := r.Client.Get(ctx, types.NamespacedName{Namespace: req.Namespace, Name: moduleDeployment.Spec.DeploymentName}, deployment)
 		if err != nil {
 			log.Log.Error(err, "Failed to get deployment", "deploymentName", deployment.Name)
-			deploymentCheckFailed := validation.DeploymentCheck(err, moduleDeployment, deployment)
-			if deploymentCheckFailed {
+			deploymentCheckPass := validation.DeploymentCheck(err, moduleDeployment, deployment)
+			if !deploymentCheckPass {
 				err := r.Status().Update(context.TODO(), moduleDeployment)
 				if err != nil {
 					return ctrl.Result{}, err
@@ -215,8 +205,8 @@ func (r *ModuleDeploymentReconciler) createOrGetModuleReplicas(moduleDeployment 
 			continue
 		}
 		// check Replicas
-		replicasCheckFailed := validation.ReplicasCheck(moduleDeployment, deployment, moduleReplicas)
-		if replicasCheckFailed {
+		replicasCheckPass := validation.ReplicasCheck(moduleDeployment, deployment, moduleReplicas)
+		if !replicasCheckPass {
 			err := r.Status().Update(context.TODO(), moduleDeployment)
 			if err != nil {
 				return moduleReplicaSet, err

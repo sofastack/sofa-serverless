@@ -10,85 +10,37 @@ import (
 )
 
 const (
-	SymmetricDeployType           = "symmetric"
-	AsymmetricDeployType          = "asymmetric"
-	DeployTypeErrMessage          = "deployType only support symmetric or asymmetric"
-	ModuleInfoErrMessage          = "module name version url can not empty"
-	ReplicasCheckErrMessage       = "Failed to create Replicas, find moduleDeployment Replicas more than Deployment Replicas"
-	DeploymentNotFoundErrMessage  = "deployment not found"
-	DeploymentNameEmptyErrMessage = "can not create or update, deploymentName can not be ''"
+	ReplicasCheckErrMessage      = "Failed to create Replicas, find moduleDeployment Replicas more than Deployment Replicas"
+	DeploymentNotFoundErrMessage = "deployment not found"
 )
-
-func ModuleDeploymentCheck(moduleDeployment *moduledeploymentv1alpha1.ModuleDeployment) bool {
-	// check deploymentName is not empty
-	deploymentName := moduleDeployment.Spec.DeploymentName
-	if deploymentName == "" {
-		done := checkCondition(DeploymentNameEmptyErrMessage, moduleDeployment)
-		if done {
-			return true
-		}
-		failedCondition := buildCondition("deploymentName can not be null", DeploymentNameEmptyErrMessage)
-		moduleDeployment.Status.Conditions = append(moduleDeployment.Status.Conditions, failedCondition)
-		return true
-	}
-
-	// deployType check only support symmetric or asymmetric
-	deployType := moduleDeployment.Spec.DeployType
-	if deployType == "" || !deployTypeSupportCheck(deployType) {
-		done := checkCondition(DeployTypeErrMessage, moduleDeployment)
-		if done {
-			return true
-		}
-		failedCondition := buildCondition("deployType not support", DeployTypeErrMessage)
-		moduleDeployment.Status.Conditions = append(moduleDeployment.Status.Conditions, failedCondition)
-		return true
-	}
-
-	// module info check name or version or url can't be ""
-	module := moduleDeployment.Spec.Template.Spec.Module
-	if module.Name == "" || module.Version == "" || module.Url == "" {
-		done := checkCondition(ModuleInfoErrMessage, moduleDeployment)
-		if done {
-			return true
-		}
-		failedCondition := buildCondition("module name or version or url can not empty", ModuleInfoErrMessage)
-		moduleDeployment.Status.Conditions = append(moduleDeployment.Status.Conditions, failedCondition)
-		return true
-	}
-	return false
-}
 
 func DeploymentCheck(err error, moduleDeployment *moduledeploymentv1alpha1.ModuleDeployment, deployment *v1.Deployment) bool {
 	if !errors.IsNotFound(err) {
-		return false
+		return true
 	}
 	done := checkCondition(DeploymentNotFoundErrMessage, moduleDeployment)
 	if done {
-		return true
+		return false
 	}
 	log.Log.Info("Failed to get deployment", "deploymentName", deployment.Name)
 	failedCondition := buildCondition("deployment not found", DeploymentNotFoundErrMessage)
 	moduleDeployment.Status.Conditions = append(moduleDeployment.Status.Conditions, failedCondition)
-	return true
+	return false
 }
 
 func ReplicasCheck(moduleDeployment *moduledeploymentv1alpha1.ModuleDeployment, deployment *v1.Deployment, moduleReplicas int32) bool {
 	deploymentReplicas := *deployment.Spec.Replicas
 	if moduleReplicas <= deploymentReplicas {
-		return false
+		return true
 	}
 	log.Log.Info("Failed to check replicas deployment", "moduleDeploymentName", moduleDeployment.Name)
 	done := checkCondition(ReplicasCheckErrMessage, moduleDeployment)
 	if done {
-		return true
+		return false
 	}
 	failedCondition := buildCondition("replicas more than deployment replicas", ReplicasCheckErrMessage)
 	moduleDeployment.Status.Conditions = append(moduleDeployment.Status.Conditions, failedCondition)
-	return true
-}
-
-func deployTypeSupportCheck(deployType string) bool {
-	return deployType == SymmetricDeployType || deployType == AsymmetricDeployType
+	return false
 }
 
 func checkCondition(message string, moduleDeployment *moduledeploymentv1alpha1.ModuleDeployment) bool {
