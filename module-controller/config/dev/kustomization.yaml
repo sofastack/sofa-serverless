@@ -1,0 +1,37 @@
+bases:
+  - ../default
+
+patches:
+  - patch: |
+      - op: "remove"
+        path: "/spec/dnsNames"
+    target:
+      kind: Certificate
+  - patch: |
+      - op: "add"
+        path: "/spec/ipAddresses"
+        value: ["<your-local-ip>"]
+    target:
+      kind: Certificate
+  - patch: |
+      - op: "add"
+        path: "/webhooks/0/clientConfig/url"
+        value: "https://<your-local-ip>:9443/mutate-serverless-alipay-com-v1alpha1-moduledeployment"
+    target:
+      kind: MutatingWebhookConfiguration
+  - patch: |
+      - op: "add"
+        path: "/webhooks/0/clientConfig/url"
+        value: "https://<your-local-ip>:9443/validate-serverless-alipay-com-v1alpha1-moduledeployment"
+    target:
+      kind: ValidatingWebhookConfiguration
+  - patch: |
+      - op: "remove"
+        path: "/webhooks/0/clientConfig/service"
+    target:
+      kind: MutatingWebhookConfiguration
+  - patch: |
+      - op: "remove"
+        path: "/webhooks/0/clientConfig/service"
+    target:
+      kind: ValidatingWebhookConfiguration

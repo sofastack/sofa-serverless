@@ -135,6 +135,14 @@ dev: ## create all resource
 undev: ## patch all crd finalizers to empty and clean resource
 	$(KUBECTL) delete --ignore-not-found=$(ignore-not-found) -f config/samples/dynamic-stock-deployment.yaml
 
+.PHONY: webhookdev
+webhookdev: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
+	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
+	$(KUSTOMIZE) build config/dev | kubectl apply -f -
+.PHONY: webhookundev
+webhookundev: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
+	$(KUSTOMIZE) build config/dev | kubectl delete --ignore-not-found=$(ignore-not-found) -f -
+
 
 ##@ Build Dependencies
 
