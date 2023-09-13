@@ -56,4 +56,10 @@ jobs:
       
       - name: Apply moduledeployment
         run: |
-          kubectl apply -f config/samples/module-deployment_v1alpha1_moduledeployment_provider.yaml
+          kubectl apply -f config/samples/module-deployment_v1alpha1_moduledeployment.yaml
+
+      - run: sleep 30
+
+      - name: get mmodule
+        run: |
+          kubectl get module
