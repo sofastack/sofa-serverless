@@ -1,0 +1,46 @@
+name: Module Controller Integration Test
+run-name: ${{ github.actor }} pushed module-controller code
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - 'module-controller/**'
+      
+  pull_request:
+    branches:
+      - master
+    paths:
+      - 'module-controller/**'
+      
+  # enable manually running the workflow
+  workflow_dispatch:
+  
+env:
+  CGO_ENABLED: 0
+  GOOS: linux
+  WORK_DIR: module-controller
+  
+defaults:
+  run:
+    working-directory: module-controller
+
+jobs:
+  unit-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Minikube
+        uses: azure/setup-minikube@v1
+
+      - name: Start Minikube
+        run: minikube start
+
+      - name: Prepare development env
+        run: make dev
+      
+      - name: Apply moduledeployment
+        run: |
+          kubectl apply -f config/samples/module-deployment_v1alpha1_moduledeployment_provider.yaml
