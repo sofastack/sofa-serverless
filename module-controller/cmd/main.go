@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"k8s.io/utils/env"
 	"os"
 
 	"go.uber.org/zap/zapcore"
@@ -88,8 +89,8 @@ func main() {
 		// after the manager stops then its usage might be unsafe.
 		// LeaderElectionReleaseOnCancel: true,
 	}
-
-	if os.Getenv("ENVIRONMENT") == "DEV" {
+	testEnv, _ := env.GetBool("test", false)
+	if testEnv {
 		path, err := os.Getwd()
 		if err != nil {
 			setupLog.Error(err, "unable to get work dir")
