@@ -20,6 +20,10 @@ import (
 	"context"
 	"crypto/tls"
 	"fmt"
+	v1 "k8s.io/api/apps/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes/scheme"
 	"net"
 	"path/filepath"
 	"testing"
@@ -29,8 +33,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	admissionv1 "k8s.io/api/admission/v1"
-	//+kubebuilder:scaffold:imports
-	"k8s.io/apimachinery/pkg/runtime"
+
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -74,23 +77,25 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(cfg).NotTo(BeNil())
 
-	scheme := runtime.NewScheme()
-	err = AddToScheme(scheme)
+	err = scheme.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
-	err = admissionv1.AddToScheme(scheme)
+	err = AddToScheme(scheme.Scheme)
+	Expect(err).NotTo(HaveOccurred())
+
+	err = admissionv1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
 	//+kubebuilder:scaffold:scheme
 
-	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme})
+	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
 	Expect(err).NotTo(HaveOccurred())
 	Expect(k8sClient).NotTo(BeNil())
 
 	// start webhook server using Manager
 	webhookInstallOptions := &testEnv.WebhookInstallOptions
 	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
-		Scheme:             scheme,
+		Scheme:             scheme.Scheme,
 		Host:               webhookInstallOptions.LocalServingHost,
 		Port:               webhookInstallOptions.LocalServingPort,
 		CertDir:            webhookInstallOptions.LocalServingCertDir,
@@ -130,3 +135,150 @@ var _ = AfterSuite(func() {
 	err := testEnv.Stop()
 	Expect(err).NotTo(HaveOccurred())
 })
+
+func TestWebhookDefault(t *testing.T) {
+	r := ModuleDeployment{}
+	t.Run("", func(t *testing.T) {
+		r.Default()
+		r.ValidateDelete()
+	})
+}
+
+var _ = Describe("ModuleDeployment Webhook", func() {
+
+	namespace := "default"
+	moduleDeploymentName := "module-deployment-test-demo"
+	moduleDeployment := prepareModuleDeployment(namespace, moduleDeploymentName)
+
+	Context("create module deployment failed", func() {
+		It("create module deployment failed", func() {
+			Expect(k8sClient.Create(context.TODO(), &moduleDeployment)).ShouldNot(Succeed())
+
+			warnings, err := moduleDeployment.ValidateCreate()
+			Expect(err).ShouldNot(BeNil())
+			Expect(warnings).ShouldNot(BeNil())
+		})
+	})
+
+	Context("update module deployment failed", func() {
+		It("update module deployment failed", func() {
+			Expect(k8sClient.Update(context.TODO(), &moduleDeployment)).ShouldNot(Succeed())
+			warnings, err := moduleDeployment.ValidateUpdate(&moduleDeployment)
+			Expect(err).ShouldNot(BeNil())
+			Expect(warnings).ShouldNot(BeNil())
+		})
+	})
+
+	Context("create module deployment success", func() {
+		It("create module deployment success", func() {
+
+			deployment := prepareDeployment()
+			Expect(k8sClient.Create(context.TODO(), &deployment)).Should(Succeed())
+			Expect(k8sClient.Create(context.TODO(), &moduleDeployment)).Should(Succeed())
+
+			createWarnings, createErr := moduleDeployment.ValidateCreate()
+			Expect(createErr).Should(BeNil())
+			Expect(createWarnings).Should(BeNil())
+
+			Expect(k8sClient.Update(context.TODO(), &moduleDeployment)).Should(Succeed())
+			updateWarnings, updateErr := moduleDeployment.ValidateUpdate(&moduleDeployment)
+			Expect(updateErr).Should(BeNil())
+			Expect(updateWarnings).Should(BeNil())
+
+			Expect(k8sClient.Delete(context.TODO(), &moduleDeployment)).Should(Succeed())
+			Expect(k8sClient.Delete(context.TODO(), &deployment)).Should(Succeed())
+		})
+	})
+
+	Context("create module deployment replicas failed", func() {
+		It("create module deployment replicas failed", func() {
+
+			deployment := prepareDeployment()
+			moduleDeployment.Spec.Replicas = 2
+			Expect(k8sClient.Create(context.TODO(), &deployment)).Should(Succeed())
+			Expect(k8sClient.Create(context.TODO(), &moduleDeployment)).ShouldNot(Succeed())
+
+			createWarnings, createErr := moduleDeployment.ValidateCreate()
+			Expect(createErr).ShouldNot(BeNil())
+			Expect(createWarnings).ShouldNot(BeNil())
+
+			Expect(k8sClient.Update(context.TODO(), &moduleDeployment)).ShouldNot(Succeed())
+			updateWarnings, updateErr := moduleDeployment.ValidateUpdate(&moduleDeployment)
+			Expect(updateErr).ShouldNot(BeNil())
+			Expect(updateWarnings).ShouldNot(BeNil())
+		})
+	})
+})
+
+func prepareDeployment() v1.Deployment {
+	var deployment v1.Deployment
+	replicas := int32(1)
+	deployment = v1.Deployment{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "dynamic-stock-deployment",
+			Namespace: "default",
+		},
+		Spec: v1.DeploymentSpec{
+			Replicas: &replicas,
+			Selector: &metav1.LabelSelector{
+				MatchLabels: map[string]string{
+					"app": "dynamic-stock",
+				},
+			},
+			Template: corev1.PodTemplateSpec{
+				ObjectMeta: metav1.ObjectMeta{
+					Labels: map[string]string{
+						"app": "dynamic-stock",
+					},
+				},
+				Spec: corev1.PodSpec{
+					Containers: []corev1.Container{
+						{
+							Name:  "dynamic-stock-deployment",
+							Image: "serverless-registry.cn-shanghai.cr.aliyuncs.com/opensource/test/dynamic-stock-mng:v0.8",
+							Ports: []corev1.ContainerPort{
+								{
+									ContainerPort: 8080,
+								},
+								{
+									ContainerPort: 1238,
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	return deployment
+}
+
+func prepareModuleDeployment(namespace, moduleDeploymentName string) ModuleDeployment {
+	baseDeploymentName := "dynamic-stock-deployment"
+
+	moduleDeployment := ModuleDeployment{
+		Spec: ModuleDeploymentSpec{
+			BaseDeploymentName: baseDeploymentName,
+			DeployType:         ModuleDeploymentDeployTypeSymmetric,
+			Replicas:           1,
+			Template: ModuleTemplateSpec{
+				Spec: ModuleSpec{
+					Module: ModuleInfo{
+						Name:    "dynamic-provider",
+						Version: "1.0.0",
+						Url:     "http://serverless-opensource.oss-cn-shanghai.aliyuncs.com/module-packages/stable/dynamic-provider-1.0.0-ark-biz.jar",
+					},
+				},
+			},
+		},
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      moduleDeploymentName,
+			Namespace: namespace,
+			Labels: map[string]string{
+				"app": "dynamic-stock",
+			},
+			Annotations: map[string]string{},
+		},
+	}
+	return moduleDeployment
+}
