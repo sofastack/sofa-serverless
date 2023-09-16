@@ -7,8 +7,6 @@ name: Release
 ## trigger manually
 on:
   workflow_dispatch:
-    paths:
-      - 'arklet/**'
 
 jobs:
   build:
@@ -23,6 +21,7 @@ jobs:
           distribution: 'temurin'
           cache: maven
       - name: Build with Maven
+        working-directory: arklet
         run: mvn clean install -Pci-install -B -U -e && sh ./check_format.sh
   release:
     needs: build
@@ -41,6 +40,7 @@ jobs:
           gpg-private-key: ${{ secrets.MAVEN_GPG_PRIVATE_KEY }} # Value of the GPG private key to import
           gpg-passphrase: MAVEN_GPG_PASSPHRASE # env variable for GPG private key passphrase
       - name: Build with Maven
+        working-directory: arklet
         run: mvn --batch-mode deploy -DskipTests -Prelease
         env:
           MAVEN_USERNAME: ${{ secrets.MAVEN_USERNAME }}
