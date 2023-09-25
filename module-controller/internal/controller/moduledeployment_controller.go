@@ -367,8 +367,22 @@ func (r *ModuleDeploymentReconciler) updateModuleReplicaSet(ctx context.Context,
 	}
 
 	moduleDeployment.Status.ReleaseStatus.CurrentBatch += 1
-	moduleDeployment.Status.ReleaseStatus.Progress = moduledeploymentv1alpha1.ModuleDeploymentReleaseProgressExecuting
 	moduleDeployment.Status.ReleaseStatus.LastTransitionTime = metav1.Now()
+
+	var grayTime = 0
+
+	if moduleDeployment.Spec.OperationStrategy.NeedConfirm {
+		moduleDeployment.Status.ReleaseStatus.Progress = moduledeploymentv1alpha1.ModuleDeploymentReleaseProgressWaitingForConfirmation
+	} else if grayTime = int(moduleDeployment.Spec.OperationStrategy.GrayTimeBetweenBatchSeconds); grayTime != 0 {
+		if curBatch == batchCount {
+			moduleDeployment.Status.ReleaseStatus.Progress = moduledeploymentv1alpha1.ModuleDeploymentReleaseProgressExecuting
+		} else {
+			moduleDeployment.Status.ReleaseStatus.Progress = moduledeploymentv1alpha1.ModuleDeploymentReleaseProgressPaused
+		}
+	} else {
+		moduleDeployment.Status.ReleaseStatus.Progress = moduledeploymentv1alpha1.ModuleDeploymentReleaseProgressExecuting
+	}
+
 	moduleDeployment.Status.Conditions = append(moduleDeployment.Status.Conditions, moduledeploymentv1alpha1.ModuleDeploymentCondition{
 		Type:               moduledeploymentv1alpha1.DeploymentProgressing,
 		Status:             corev1.ConditionTrue,
@@ -376,7 +390,7 @@ func (r *ModuleDeploymentReconciler) updateModuleReplicaSet(ctx context.Context,
 		Message:            fmt.Sprintf("deployment release: curbatch %v, batchCount %v", curBatch, batchCount),
 	})
 
-	return false, r.Status().Update(ctx, moduleDeployment)
+	return grayTime == 0, r.Status().Update(ctx, moduleDeployment)
 }
 
 // generate module replicas
