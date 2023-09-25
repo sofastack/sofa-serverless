@@ -19,9 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
-	"math"
 	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -32,7 +30,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/util/workqueue"
 	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -117,15 +114,7 @@ func (r *ModuleDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 			return ctrl.Result{}, err
 		}
 	case moduledeploymentv1alpha1.ModuleDeploymentReleaseProgressExecuting:
-		// update moduleReplicaSet
-		enqueue, err := r.updateModuleReplicaSet(ctx, moduleDeployment, newRS, oldRSs)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		if enqueue {
-			requeueAfter := utils.GetNextReconcileTime(time.Now())
-			return ctrl.Result{RequeueAfter: requeueAfter}, nil
-		}
+		return r.updateModuleReplicaSet(moduleDeployment, newRS, oldRSs)
 	case moduledeploymentv1alpha1.ModuleDeploymentReleaseProgressCompleted:
 		if moduleDeployment.Spec.Replicas != newRS.Spec.Replicas {
 			moduleDeployment.Status.ReleaseStatus.Progress = moduledeploymentv1alpha1.ModuleDeploymentReleaseProgressExecuting
@@ -315,17 +304,29 @@ func (r *ModuleDeploymentReconciler) updateModuleReplicas(
 	return nil
 }
 
-func (r *ModuleDeploymentReconciler) updateModuleReplicaSet(ctx context.Context, moduleDeployment *moduledeploymentv1alpha1.ModuleDeployment,
-	newRS *moduledeploymentv1alpha1.ModuleReplicaSet, oldRSs []*moduledeploymentv1alpha1.ModuleReplicaSet) (bool, error) {
+func (r *ModuleDeploymentReconciler) updateModuleReplicaSet(moduleDeployment *moduledeploymentv1alpha1.ModuleDeployment,
+	newRS *moduledeploymentv1alpha1.ModuleReplicaSet, oldRSs []*moduledeploymentv1alpha1.ModuleReplicaSet) (ctrl.Result, error) {
 	var (
+		ctx = context.TODO()
+
 		batchCount = moduleDeployment.Spec.OperationStrategy.BatchCount
 		curBatch   = moduleDeployment.Status.ReleaseStatus.CurrentBatch
 
-		curReplicas   = newRS.Status.Replicas
-		expReplicas   = moduleDeployment.Spec.Replicas
-		deltaReplicas = expReplicas - newRS.Spec.Replicas
+		curReplicas = newRS.Status.Replicas
+		expReplicas = moduleDeployment.Spec.Replicas
 	)
-	if deltaReplicas == 0 {
+
+	if batchCount <= 0 {
+		batchCount = 1
+	}
+
+	// wait moduleReplicaset ready
+	if replicas := (curBatch - 1) * (moduleDeployment.Spec.Replicas / batchCount); replicas > curReplicas {
+		log.Log.Info(fmt.Sprintf("newRs is not ready, expect replicas %v, but got %v", replicas, curReplicas))
+		return ctrl.Result{Requeue: true, RequeueAfter: utils.GetNextReconcileTime(time.Now())}, nil
+	}
+
+	if curReplicas >= expReplicas {
 		moduleDeployment.Status.ReleaseStatus.Progress = moduledeploymentv1alpha1.ModuleDeploymentReleaseProgressCompleted
 		moduleDeployment.Status.ReleaseStatus.LastTransitionTime = metav1.Now()
 		moduleDeployment.Status.Conditions = append(moduleDeployment.Status.Conditions, moduledeploymentv1alpha1.ModuleDeploymentCondition{
@@ -334,36 +335,17 @@ func (r *ModuleDeploymentReconciler) updateModuleReplicaSet(ctx context.Context,
 			LastTransitionTime: metav1.Now(),
 			Message:            "deployment release progress completed",
 		})
-		return false, r.Status().Update(ctx, moduleDeployment)
+		return ctrl.Result{}, r.Status().Update(ctx, moduleDeployment)
 	}
 
-	if expReplicas < batchCount {
-		batchCount = expReplicas
-	}
-
-	if batchCount <= 0 {
-		batchCount = 1
-	}
-
-	// wait moduleReplicaset ready
-	if newRS.Spec.Replicas != curReplicas {
-		log.Log.Info(fmt.Sprintf("newRs is not ready, expect replicas %v, but got %v", newRS.Spec.Replicas, curReplicas))
-		return true, nil
-	}
-
-	replicas := int32(0)
-	// use beta strategy
-	if batchCount != 1 && curBatch == 1 && moduleDeployment.Spec.OperationStrategy.UseBeta {
-		replicas = 1
-	} else if curBatch == batchCount { // if it's the last batch
+	replicas := curBatch * (moduleDeployment.Spec.Replicas / batchCount)
+	if curBatch == batchCount { // is the last batch
 		replicas = expReplicas
-	} else {
-		replicas = newRS.Spec.Replicas + (curBatch)*int32(math.Floor(float64(deltaReplicas)/float64(batchCount)+0.5))
 	}
 
 	err := r.updateModuleReplicas(ctx, replicas, moduleDeployment, newRS, oldRSs)
 	if err != nil {
-		return false, err
+		return ctrl.Result{}, err
 	}
 
 	moduleDeployment.Status.ReleaseStatus.CurrentBatch += 1
@@ -390,7 +372,7 @@ func (r *ModuleDeploymentReconciler) updateModuleReplicaSet(ctx context.Context,
 		Message:            fmt.Sprintf("deployment release: curbatch %v, batchCount %v", curBatch, batchCount),
 	})
 
-	return grayTime == 0, r.Status().Update(ctx, moduleDeployment)
+	return ctrl.Result{Requeue: true, RequeueAfter: time.Duration(grayTime) * time.Second}, r.Status().Update(ctx, moduleDeployment)
 }
 
 // generate module replicas
@@ -447,61 +429,8 @@ func (r *ModuleDeploymentReconciler) createNewReplicaSet(ctx context.Context, mo
 	return moduleReplicaSet, nil
 }
 
-type waitingLoop struct {
-	*ModuleDeploymentReconciler
-}
-
-func (w *waitingLoop) Start(ctx context.Context) error {
-	for i := 0; i < 3; i++ {
-		go wait.Until(w.worker, time.Second, ctx.Done())
-	}
-	return nil
-}
-
-func (w *waitingLoop) worker() {
-	for w.processItem() {
-	}
-}
-
-func (w *waitingLoop) processItem() bool {
-	item, shutdown := w.DelayingQueue.Get()
-	if shutdown {
-		return false
-	}
-
-	defer w.DelayingQueue.Done(item)
-
-	_ = w.HandleDelayingItem(item.(string))
-	return true
-}
-
-func (r *ModuleDeploymentReconciler) HandleDelayingItem(key string) error {
-	arr := strings.Split(key, "/")
-	if len(arr) != 2 {
-		return fmt.Errorf("invalid key %v", key)
-	}
-	moduleDeployment := &moduledeploymentv1alpha1.ModuleDeployment{}
-	name, namespace := arr[0], arr[1]
-	err := r.Get(context.TODO(), types.NamespacedName{Namespace: namespace, Name: name}, moduleDeployment)
-	if err != nil {
-		if errors.IsNotFound(err) {
-			return nil
-		}
-		log.Log.Error(err, "get moduleDeployment failed")
-		return err
-	}
-	if moduleDeployment.Spec.Pause {
-		moduleDeployment.Spec.Pause = false
-		if err = r.Update(context.TODO(), moduleDeployment); err != nil {
-			log.Log.Error(err, "update moduleDeployment failed")
-		}
-	}
-	return err
-}
-
 // SetupWithManager sets up the controller with the Manager.
 func (r *ModuleDeploymentReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	mgr.Add(&waitingLoop{r})
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&moduledeploymentv1alpha1.ModuleDeployment{}).
 		Complete(r)
