@@ -392,7 +392,6 @@ func (r *ModuleDeploymentReconciler) generateModuleReplicas(moduleDeployment *mo
 		},
 		Spec: moduledeploymentv1alpha1.ModuleReplicaSetSpec{
 			Selector:           *deployment.Spec.Selector,
-			Replicas:           moduleDeployment.Spec.Replicas,
 			Template:           moduleDeployment.Spec.Template,
 			OperationStrategy:  moduleDeployment.Spec.OperationStrategy,
 			SchedulingStrategy: moduleDeployment.Spec.SchedulingStrategy,
