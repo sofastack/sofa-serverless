@@ -20,7 +20,6 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"sync"
 	"time"
 
 	v1 "k8s.io/api/apps/v1"
@@ -30,7 +29,6 @@ import (
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
-	"k8s.io/client-go/util/workqueue"
 	"k8s.io/utils/pointer"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -46,10 +44,7 @@ import (
 // ModuleDeploymentReconciler reconciles a ModuleDeployment object
 type ModuleDeploymentReconciler struct {
 	client.Client
-	Scheme        *runtime.Scheme
-	DelayingQueue workqueue.DelayingInterface
-	Set           map[string][]int32
-	mutex         sync.Mutex
+	Scheme *runtime.Scheme
 }
 
 //+kubebuilder:rbac:groups=serverless.alipay.com,resources=moduledeployments,verbs=get;list;watch;create;update;patch;delete
@@ -338,9 +333,15 @@ func (r *ModuleDeploymentReconciler) updateModuleReplicaSet(moduleDeployment *mo
 		return ctrl.Result{}, r.Status().Update(ctx, moduleDeployment)
 	}
 
-	replicas := curBatch * (moduleDeployment.Spec.Replicas / batchCount)
-	if curBatch == batchCount { // is the last batch
+	replicas := int32(0)
+	// use beta strategy
+	if batchCount != 1 && curBatch == 1 && moduleDeployment.Spec.OperationStrategy.UseBeta {
+		replicas = 1
+	} else if curBatch == batchCount { // if it's the last batch
 		replicas = expReplicas
+	} else {
+		// ceil: if moduleDeployment.Spec.Replicas = 5, batchCount = 3, then each batch is 2
+		replicas = curBatch * ((moduleDeployment.Spec.Replicas + batchCount - 1) / batchCount)
 	}
 
 	err := r.updateModuleReplicas(ctx, replicas, moduleDeployment, newRS, oldRSs)
@@ -351,8 +352,7 @@ func (r *ModuleDeploymentReconciler) updateModuleReplicaSet(moduleDeployment *mo
 	moduleDeployment.Status.ReleaseStatus.CurrentBatch += 1
 	moduleDeployment.Status.ReleaseStatus.LastTransitionTime = metav1.Now()
 
-	var grayTime = 0
-
+	var grayTime int
 	if moduleDeployment.Spec.OperationStrategy.NeedConfirm {
 		moduleDeployment.Status.ReleaseStatus.Progress = moduledeploymentv1alpha1.ModuleDeploymentReleaseProgressWaitingForConfirmation
 	} else if grayTime = int(moduleDeployment.Spec.OperationStrategy.GrayTimeBetweenBatchSeconds); grayTime != 0 {
