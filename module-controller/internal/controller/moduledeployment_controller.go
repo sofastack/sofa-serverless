@@ -119,19 +119,21 @@ func (r *ModuleDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 			}
 		}
 	case moduledeploymentv1alpha1.ModuleDeploymentReleaseProgressWaitingForConfirmation:
-		moduleDeployment.Status.ReleaseStatus.Progress = moduledeploymentv1alpha1.ModuleDeploymentReleaseProgressPaused
-		if err := r.Status().Update(ctx, moduleDeployment); err != nil {
-			return ctrl.Result{}, err
-		}
-	case moduledeploymentv1alpha1.ModuleDeploymentReleaseProgressPaused:
 		moduleDeployment.Spec.Pause = true
 		if err := r.Update(ctx, moduleDeployment); err != nil {
 			return ctrl.Result{}, err
 		}
 
-		moduleDeployment.Status.ReleaseStatus.Progress = moduledeploymentv1alpha1.ModuleDeploymentReleaseProgressExecuting
+		moduleDeployment.Status.ReleaseStatus.Progress = moduledeploymentv1alpha1.ModuleDeploymentReleaseProgressPaused
 		if err := r.Status().Update(ctx, moduleDeployment); err != nil {
 			return ctrl.Result{}, err
+		}
+	case moduledeploymentv1alpha1.ModuleDeploymentReleaseProgressPaused:
+		if !moduleDeployment.Spec.Pause {
+			moduleDeployment.Status.ReleaseStatus.Progress = moduledeploymentv1alpha1.ModuleDeploymentReleaseProgressExecuting
+			if err := r.Status().Update(ctx, moduleDeployment); err != nil {
+				return ctrl.Result{}, err
+			}
 		}
 	}
 
@@ -311,12 +313,19 @@ func (r *ModuleDeploymentReconciler) updateModuleReplicaSet(moduleDeployment *mo
 		expReplicas = moduleDeployment.Spec.Replicas
 	)
 
+	// if expected replicas is 0, then just return
+	if expReplicas <= 0 {
+		return ctrl.Result{}, nil
+	}
+
 	if batchCount <= 0 {
 		batchCount = 1
+	} else if expReplicas < batchCount {
+		batchCount = expReplicas
 	}
 
 	// wait moduleReplicaset ready
-	if replicas := (curBatch - 1) * (moduleDeployment.Spec.Replicas / batchCount); replicas > curReplicas {
+	if replicas := (curBatch - 1) * ((moduleDeployment.Spec.Replicas + batchCount - 1) / batchCount); replicas > curReplicas {
 		log.Log.Info(fmt.Sprintf("newRs is not ready, expect replicas %v, but got %v", replicas, curReplicas))
 		return ctrl.Result{Requeue: true, RequeueAfter: utils.GetNextReconcileTime(time.Now())}, nil
 	}
@@ -351,18 +360,19 @@ func (r *ModuleDeploymentReconciler) updateModuleReplicaSet(moduleDeployment *mo
 
 	moduleDeployment.Status.ReleaseStatus.CurrentBatch += 1
 	moduleDeployment.Status.ReleaseStatus.LastTransitionTime = metav1.Now()
+	moduleDeployment.Status.ReleaseStatus.Progress = moduledeploymentv1alpha1.ModuleDeploymentReleaseProgressExecuting
 
 	var grayTime int
-	if moduleDeployment.Spec.OperationStrategy.NeedConfirm {
-		moduleDeployment.Status.ReleaseStatus.Progress = moduledeploymentv1alpha1.ModuleDeploymentReleaseProgressWaitingForConfirmation
-	} else if grayTime = int(moduleDeployment.Spec.OperationStrategy.GrayTimeBetweenBatchSeconds); grayTime != 0 {
-		if curBatch == batchCount {
-			moduleDeployment.Status.ReleaseStatus.Progress = moduledeploymentv1alpha1.ModuleDeploymentReleaseProgressExecuting
-		} else {
-			moduleDeployment.Status.ReleaseStatus.Progress = moduledeploymentv1alpha1.ModuleDeploymentReleaseProgressPaused
+	if curBatch != batchCount {
+		if moduleDeployment.Spec.OperationStrategy.NeedConfirm { // use NeedConfirm Strategy
+			moduleDeployment.Status.ReleaseStatus.Progress = moduledeploymentv1alpha1.ModuleDeploymentReleaseProgressWaitingForConfirmation
+		} else if grayTime = int(moduleDeployment.Spec.OperationStrategy.GrayTimeBetweenBatchSeconds); grayTime != 0 {
+			if curBatch == batchCount {
+				moduleDeployment.Status.ReleaseStatus.Progress = moduledeploymentv1alpha1.ModuleDeploymentReleaseProgressExecuting
+			} else {
+				moduleDeployment.Status.ReleaseStatus.Progress = moduledeploymentv1alpha1.ModuleDeploymentReleaseProgressPaused
+			}
 		}
-	} else {
-		moduleDeployment.Status.ReleaseStatus.Progress = moduledeploymentv1alpha1.ModuleDeploymentReleaseProgressExecuting
 	}
 
 	moduleDeployment.Status.Conditions = append(moduleDeployment.Status.Conditions, moduledeploymentv1alpha1.ModuleDeploymentCondition{
