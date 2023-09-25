@@ -189,7 +189,7 @@ func (r *ModuleReplicaSetReconciler) scaleUpThenScaleDownModule(ctx context.Cont
 	desiredModule := moduleReplicaSet.Spec.Template.Spec.Module
 	for _, existedModule := range existedModuleList {
 
-		needUpgradeModule := existedModule.Spec.Module.Name != desiredModule.Name || existedModule.Spec.Module.Version != desiredModule.Version || existedModule.Spec.Module.Url != desiredModule.Url
+		needUpgradeModule := existedModule.Spec.Module.Name != desiredModule.Name || existedModule.Spec.Module.Version != desiredModule.Version
 		if needUpgradeModule {
 			// delete pod
 			podName := existedModule.Labels[label.BaseInstanceNameLabel]
