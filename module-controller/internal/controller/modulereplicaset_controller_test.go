@@ -156,7 +156,7 @@ func TestModuleReplicaSetReconciler_getScaleDownCandidateModules(t *testing.T) {
 
 	for _, tt := range testCases {
 		t.Run("", func(t *testing.T) {
-			actualModules := r.getScaleDownCandidateModules(tt.moduleList.Items, tt.podList, tt.moduleReplicaSet)
+			actualModules, _ := r.getScaleDownCandidateModules(tt.moduleList.Items, tt.podList, tt.moduleReplicaSet)
 			if err := cmp(tt.expectedModules, actualModules); err != nil {
 				t.Error(err)
 			}
