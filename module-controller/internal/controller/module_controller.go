@@ -193,18 +193,17 @@ func (r *ModuleReconciler) doUninstallModuleWhenTerminating(ctx context.Context,
 	}
 
 	if targetPod != nil && targetPod.Name != "" {
+		// uninstall module
+		_, err = arklet.Client().UninstallBiz(ip, module.Spec.Module.Name, module.Spec.Module.Version)
+		if err != nil {
+			return utils.Error(err, "Failed post module", "moduleName", module.Spec.Module.Name)
+		}
 		// clean module label
 		delete(targetPod.Labels, fmt.Sprintf("%s-%s", label.ModuleNameLabel, module.Spec.Module.Name))
 		err = r.Client.Update(ctx, targetPod)
 		if err != nil {
 			utils.Error(err, "Failed remove module label in pod", "moduleName", module.Spec.Module.Name)
 			return err
-		}
-
-		// uninstall module
-		_, err = arklet.Client().UninstallBiz(ip, module.Spec.Module.Name, module.Spec.Module.Version)
-		if err != nil {
-			return utils.Error(err, "Failed post module", "moduleName", module.Spec.Module.Name)
 		}
 	} else {
 		log.Log.Info("pod not exist", "moduleName", module.Spec.Module.Name, "module", module.Name)
@@ -314,6 +313,9 @@ func (r *ModuleReconciler) handlePendingModuleInstance(ctx context.Context, modu
 	var pod corev1.Pod
 	existSchedulingPod := false
 	for _, podItr := range selectedPods.Items {
+		if podItr.DeletionTimestamp != nil {
+			continue
+		}
 		if podItr.Status.PodIP != "" {
 			// pod with ip to schedule module
 			pod = podItr

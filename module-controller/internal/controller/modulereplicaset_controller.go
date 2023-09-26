@@ -435,6 +435,9 @@ func (r *ModuleReplicaSetReconciler) getScaleUpCandidatePods(sameReplicaSetModul
 	var toAllocatePod []corev1.Pod
 	count := deltaReplicas
 	for _, pod := range selectedPods.Items {
+		if pod.DeletionTimestamp != nil {
+			continue
+		}
 		var instanceCount int
 		if cntStr, ok := pod.Labels[label.ModuleInstanceCount]; !ok {
 			instanceCount = utils.GetModuleCountFromPod(&pod)
@@ -463,7 +466,6 @@ func (r *ModuleReplicaSetReconciler) getScaleUpCandidatePods(sameReplicaSetModul
 
 func (r *ModuleReplicaSetReconciler) doAllocatePod(ctx context.Context, toAllocatePod []corev1.Pod, moduleReplicaSet *moduledeploymentv1alpha1.ModuleReplicaSet) error {
 	for _, pod := range toAllocatePod {
-		pod.Labels[fmt.Sprintf("%s-%s", label.ModuleNameLabel, moduleReplicaSet.Spec.Template.Spec.Module.Name)] = moduleReplicaSet.Spec.Template.Spec.Module.Version
 		if _, exist := pod.Labels[label.ModuleInstanceCount]; exist {
 			count, err := strconv.Atoi(pod.Labels[label.ModuleInstanceCount])
 			if err != nil {
