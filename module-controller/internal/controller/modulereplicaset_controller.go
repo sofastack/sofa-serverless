@@ -327,7 +327,7 @@ func (r *ModuleReplicaSetReconciler) scaleup(ctx context.Context, availablePods 
 	// scale down old module
 	if len(otherReplicaSetModules) > 0 {
 		deleteReplicas := int32(len(toAllocatePod))
-		// TODO 区分先装后卸，先卸后装
+		// todo 区分先装后卸，先卸后装
 		// scale down old replicaSet
 		otherReplicaSet := make(map[string]string)
 		for _, otherModule := range otherReplicaSetModules {
