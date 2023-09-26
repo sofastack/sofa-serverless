@@ -66,6 +66,11 @@ func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	if pod.Labels[label.DeletePodLabel] == "true" {
 		err := r.Delete(ctx, pod)
 		if err != nil {
+			if errors.IsNotFound(err) {
+				log.Log.Info("pod is deleted", "podName", pod.Name)
+				return reconcile.Result{}, nil
+			}
+			log.Log.Error(err, "Failed to delete pod", "podName", pod.Name)
 			return ctrl.Result{}, err
 		}
 	}

@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"k8s.io/apimachinery/pkg/selection"
 	"sort"
 	"strconv"
 
@@ -127,10 +128,24 @@ func (r *ModuleReplicaSetReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		// replicas change
 		deltaReplicas := int(moduleReplicaSet.Spec.Replicas) - len(sameReplicaSetModules)
 		if deltaReplicas > 0 {
-			// scale up
-			err = r.scaleup(ctx, sameReplicaSetModules, otherReplicaSetModules, moduleReplicaSet)
-			if err != nil {
+			selector, err := metav1.LabelSelectorAsSelector(&moduleReplicaSet.Spec.Selector)
+			noAllocatedPod, _ := labels.NewRequirement(fmt.Sprintf("%s-%s", label.ModuleNameLabel, moduleReplicaSet.Spec.Template.Spec.Module.Name), selection.DoesNotExist, nil)
+			selector = selector.Add(*noAllocatedPod)
+			availablePods := &corev1.PodList{}
+			if err = r.List(ctx, availablePods, &client.ListOptions{Namespace: moduleReplicaSet.Namespace, LabelSelector: selector}); err != nil {
+				log.Log.Error(err, "Failed to list pod", "moduleReplicaSetName", moduleReplicaSet.Name)
 				return reconcile.Result{}, err
+			}
+
+			if len(availablePods.Items) == 0 {
+				// no pod to scale up
+				requeueAfter := utils.GetNextReconcileTime(moduleReplicaSet.ObjectMeta.CreationTimestamp.Time)
+				return ctrl.Result{RequeueAfter: requeueAfter}, nil
+			}
+			// scale up
+			result, err := r.scaleup(ctx, availablePods, sameReplicaSetModules, otherReplicaSetModules, moduleReplicaSet)
+			if err != nil {
+				return result, err
 			}
 		} else {
 			// scale down
@@ -146,19 +161,6 @@ func (r *ModuleReplicaSetReconciler) Reconcile(ctx context.Context, req ctrl.Req
 			return reconcile.Result{}, err
 		}
 	}
-
-	//// compare and update module version and url
-	//if moduledeploymentv1alpha1.ScaleUpThenScaleDownUpgradePolicy == moduleReplicaSet.Spec.SchedulingStrategy.UpgradePolicy {
-	//	err = r.scaleUpThenScaleDownModule(ctx, sameReplicaSetModuleList, moduleReplicaSet)
-	//	if err != nil {
-	//		return reconcile.Result{}, err
-	//	}
-	//} else {
-	//	err = r.compareAndUpdateModule(ctx, sameReplicaSetModuleList, moduleReplicaSet)
-	//	if err != nil {
-	//		return reconcile.Result{}, err
-	//	}
-	//}
 
 	return ctrl.Result{}, nil
 }
@@ -306,26 +308,20 @@ func (r *ModuleReplicaSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 // scale up module
-func (r *ModuleReplicaSetReconciler) scaleup(ctx context.Context, sameReplicaSetModules []moduledeploymentv1alpha1.Module,
-	otherReplicaSetModules []moduledeploymentv1alpha1.Module, moduleReplicaSet *moduledeploymentv1alpha1.ModuleReplicaSet) error {
-	log.Log.Info("start scaleup module", "moduleReplicaSetName", moduleReplicaSet.Name)
-	selector, err := metav1.LabelSelectorAsSelector(&moduleReplicaSet.Spec.Selector)
-	selectedPods := &corev1.PodList{}
-	if err = r.List(ctx, selectedPods, &client.ListOptions{Namespace: moduleReplicaSet.Namespace, LabelSelector: selector}); err != nil {
-		log.Log.Error(err, "Failed to list pod", "moduleReplicaSetName", moduleReplicaSet.Name)
-		return err
-	}
+func (r *ModuleReplicaSetReconciler) scaleup(ctx context.Context, availablePods *corev1.PodList, sameReplicaSetModules []moduledeploymentv1alpha1.Module,
+	otherReplicaSetModules []moduledeploymentv1alpha1.Module, moduleReplicaSet *moduledeploymentv1alpha1.ModuleReplicaSet) (ctrl.Result, error) {
+	log.Log.Info("start scale up module", "moduleReplicaSetName", moduleReplicaSet.Name)
 
 	// get candidate pod
-	toAllocatePod, err := r.getScaleUpCandidatePods(sameReplicaSetModules, selectedPods, moduleReplicaSet)
+	toAllocatePod, err := r.getScaleUpCandidatePods(sameReplicaSetModules, availablePods, moduleReplicaSet)
 	if err != nil {
-		return utils.Error(err, "Failed to get the candidate pods for scaling up")
+		return reconcile.Result{}, utils.Error(err, "Failed to get the candidate pods for scaling up")
 	}
 
 	// allocate pod
 	err = r.doAllocatePod(ctx, toAllocatePod, moduleReplicaSet)
 	if err != nil {
-		return err
+		return reconcile.Result{}, err
 	}
 
 	// scale down old module
@@ -357,13 +353,13 @@ func (r *ModuleReplicaSetReconciler) scaleup(ctx context.Context, sameReplicaSet
 				}
 				if err := r.Client.Update(ctx, otherModuleReplicaSet); err != nil {
 					log.Log.Error(err, "Failed to update other replicaset", "moduleReplicaSetName", otherModuleReplicaSet.Name)
-					return err
+					return reconcile.Result{}, err
 				}
 			}
 		}
 	}
 	log.Log.Info("finish scaleup module", "moduleReplicaSetName", moduleReplicaSet.Name)
-	return nil
+	return reconcile.Result{}, nil
 }
 
 // scale down module
