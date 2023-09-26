@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	"math"
 	"strconv"
 	"time"
 
@@ -309,28 +310,12 @@ func (r *ModuleDeploymentReconciler) updateModuleReplicaSet(moduleDeployment *mo
 		batchCount = moduleDeployment.Spec.OperationStrategy.BatchCount
 		curBatch   = moduleDeployment.Status.ReleaseStatus.CurrentBatch
 
-		curReplicas = newRS.Status.Replicas
-		expReplicas = moduleDeployment.Spec.Replicas
+		curReplicas   = newRS.Status.Replicas
+		expReplicas   = moduleDeployment.Spec.Replicas
+		deltaReplicas = expReplicas - newRS.Spec.Replicas
 	)
 
-	// if expected replicas is 0, then just return
-	if expReplicas <= 0 {
-		return ctrl.Result{}, nil
-	}
-
-	if batchCount <= 0 {
-		batchCount = 1
-	} else if expReplicas < batchCount {
-		batchCount = expReplicas
-	}
-
-	// wait moduleReplicaset ready
-	if replicas := (curBatch - 1) * ((moduleDeployment.Spec.Replicas + batchCount - 1) / batchCount); replicas > curReplicas {
-		log.Log.Info(fmt.Sprintf("newRs is not ready, expect replicas %v, but got %v", replicas, curReplicas))
-		return ctrl.Result{Requeue: true, RequeueAfter: utils.GetNextReconcileTime(time.Now())}, nil
-	}
-
-	if curReplicas >= expReplicas {
+	if deltaReplicas == 0 {
 		moduleDeployment.Status.ReleaseStatus.Progress = moduledeploymentv1alpha1.ModuleDeploymentReleaseProgressCompleted
 		moduleDeployment.Status.ReleaseStatus.LastTransitionTime = metav1.Now()
 		moduleDeployment.Status.Conditions = append(moduleDeployment.Status.Conditions, moduledeploymentv1alpha1.ModuleDeploymentCondition{
@@ -342,6 +327,20 @@ func (r *ModuleDeploymentReconciler) updateModuleReplicaSet(moduleDeployment *mo
 		return ctrl.Result{}, r.Status().Update(ctx, moduleDeployment)
 	}
 
+	if expReplicas < batchCount {
+		batchCount = expReplicas
+	}
+
+	if batchCount <= 0 {
+		batchCount = 1
+	}
+
+	// wait moduleReplicaset ready
+	if newRS.Spec.Replicas != curReplicas {
+		log.Log.Info(fmt.Sprintf("newRs is not ready, expect replicas %v, but got %v", newRS.Spec.Replicas, curReplicas))
+		return ctrl.Result{Requeue: true, RequeueAfter: utils.GetNextReconcileTime(time.Now())}, nil
+	}
+
 	replicas := int32(0)
 	// use beta strategy
 	if batchCount != 1 && curBatch == 1 && moduleDeployment.Spec.OperationStrategy.UseBeta {
@@ -349,8 +348,7 @@ func (r *ModuleDeploymentReconciler) updateModuleReplicaSet(moduleDeployment *mo
 	} else if curBatch == batchCount { // if it's the last batch
 		replicas = expReplicas
 	} else {
-		// ceil: if moduleDeployment.Spec.Replicas = 5, batchCount = 3, then each batch is 2
-		replicas = curBatch * ((moduleDeployment.Spec.Replicas + batchCount - 1) / batchCount)
+		replicas = newRS.Spec.Replicas + (curBatch)*int32(math.Floor(float64(deltaReplicas)/float64(batchCount)+0.5))
 	}
 
 	err := r.updateModuleReplicas(ctx, replicas, moduleDeployment, newRS, oldRSs)
