@@ -88,13 +88,13 @@ func (r *ModuleReplicaSetReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	})})
 
 	var sameReplicaSetModules []moduledeploymentv1alpha1.Module
-	var oldReplicaSetModules []moduledeploymentv1alpha1.Module
+	var otherReplicaSetModules []moduledeploymentv1alpha1.Module
 
 	for _, module := range moduleList.Items {
 		if module.Labels[label.ModuleReplicasetLabel] == moduleReplicaSet.Name {
 			sameReplicaSetModules = append(sameReplicaSetModules, module)
 		} else {
-			oldReplicaSetModules = append(oldReplicaSetModules, module)
+			otherReplicaSetModules = append(otherReplicaSetModules, module)
 		}
 	}
 
@@ -128,7 +128,7 @@ func (r *ModuleReplicaSetReconciler) Reconcile(ctx context.Context, req ctrl.Req
 		deltaReplicas := int(moduleReplicaSet.Spec.Replicas) - len(sameReplicaSetModules)
 		if deltaReplicas > 0 {
 			// scale up
-			err = r.scaleup(ctx, sameReplicaSetModules, oldReplicaSetModules, moduleReplicaSet)
+			err = r.scaleup(ctx, sameReplicaSetModules, otherReplicaSetModules, moduleReplicaSet)
 			if err != nil {
 				return reconcile.Result{}, err
 			}
@@ -138,6 +138,12 @@ func (r *ModuleReplicaSetReconciler) Reconcile(ctx context.Context, req ctrl.Req
 			if err != nil {
 				return reconcile.Result{}, err
 			}
+		}
+	} else {
+		// replicas not change, directly update module
+		err = r.compareAndUpdateModule(ctx, sameReplicaSetModules, moduleReplicaSet)
+		if err != nil {
+			return reconcile.Result{}, err
 		}
 	}
 
@@ -158,9 +164,9 @@ func (r *ModuleReplicaSetReconciler) Reconcile(ctx context.Context, req ctrl.Req
 }
 
 // compare and update module
-func (r *ModuleReplicaSetReconciler) compareAndUpdateModule(ctx context.Context, existedModuleList *moduledeploymentv1alpha1.ModuleList, moduleReplicaSet *moduledeploymentv1alpha1.ModuleReplicaSet) error {
+func (r *ModuleReplicaSetReconciler) compareAndUpdateModule(ctx context.Context, existedModuleList []moduledeploymentv1alpha1.Module, moduleReplicaSet *moduledeploymentv1alpha1.ModuleReplicaSet) error {
 	desiredModule := moduleReplicaSet.Spec.Template.Spec.Module
-	for _, existedModule := range existedModuleList.Items {
+	for _, existedModule := range existedModuleList {
 
 		needUpgradeModule := existedModule.Spec.Module.Name != desiredModule.Name || existedModule.Spec.Module.Version != desiredModule.Version
 		needUninstallModule := existedModule.Spec.Module.Name != desiredModule.Name
@@ -184,7 +190,7 @@ func (r *ModuleReplicaSetReconciler) compareAndUpdateModule(ctx context.Context,
 }
 
 // compare and update module
-func (r *ModuleReplicaSetReconciler) scaleUpThenScaleDownModule(ctx context.Context, existedModuleList []moduledeploymentv1alpha1.Module,
+func (r *ModuleReplicaSetReconciler) scaleDownPod(ctx context.Context, existedModuleList []moduledeploymentv1alpha1.Module,
 	moduleReplicaSet *moduledeploymentv1alpha1.ModuleReplicaSet) error {
 	desiredModule := moduleReplicaSet.Spec.Template.Spec.Module
 	for _, existedModule := range existedModuleList {
@@ -198,9 +204,10 @@ func (r *ModuleReplicaSetReconciler) scaleUpThenScaleDownModule(ctx context.Cont
 			if err != nil {
 				return utils.Error(err, "Failed to get pod when scaleUpThenScaleDownModule", "moduleName", existedModule.Name, "podName", podName)
 			}
-			err = r.Client.Delete(ctx, targetPod)
+			targetPod.Labels[label.DeletePodLabel] = "true"
+			err = r.Client.Update(ctx, targetPod)
 			if err != nil {
-				return utils.Error(err, "Failed to delete pod", "podName", targetPod.Name)
+				return utils.Error(err, "Failed to update delete pod label", "podName", targetPod.Name)
 			}
 		}
 	}
@@ -300,7 +307,7 @@ func (r *ModuleReplicaSetReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 // scale up module
 func (r *ModuleReplicaSetReconciler) scaleup(ctx context.Context, sameReplicaSetModules []moduledeploymentv1alpha1.Module,
-	oldReplicaSetModules []moduledeploymentv1alpha1.Module, moduleReplicaSet *moduledeploymentv1alpha1.ModuleReplicaSet) error {
+	otherReplicaSetModules []moduledeploymentv1alpha1.Module, moduleReplicaSet *moduledeploymentv1alpha1.ModuleReplicaSet) error {
 	log.Log.Info("start scaleup module", "moduleReplicaSetName", moduleReplicaSet.Name)
 	selector, err := metav1.LabelSelectorAsSelector(&moduleReplicaSet.Spec.Selector)
 	selectedPods := &corev1.PodList{}
@@ -309,40 +316,50 @@ func (r *ModuleReplicaSetReconciler) scaleup(ctx context.Context, sameReplicaSet
 		return err
 	}
 
+	// get candidate pod
 	toAllocatePod, err := r.getScaleUpCandidatePods(sameReplicaSetModules, selectedPods, moduleReplicaSet)
 	if err != nil {
 		return utils.Error(err, "Failed to get the candidate pods for scaling up")
 	}
-	for _, pod := range toAllocatePod {
-		pod.Labels[fmt.Sprintf("%s-%s", label.ModuleNameLabel, moduleReplicaSet.Spec.Template.Spec.Module.Name)] = moduleReplicaSet.Spec.Template.Spec.Module.Version
-		if _, exist := pod.Labels[label.ModuleInstanceCount]; exist {
-			count, err := strconv.Atoi(pod.Labels[label.ModuleInstanceCount])
-			if err != nil {
-				log.Log.Error(err, "failed to update module count")
-			} else {
-				pod.Labels[label.ModuleInstanceCount] = strconv.Itoa(count + 1)
-			}
-		} else {
-			pod.Labels[label.ModuleInstanceCount] = "1"
-		}
-		// add pod finalizer
-		utils.AddFinalizer(&pod.ObjectMeta, fmt.Sprintf("%s-%s", finalizer.ModuleNameFinalizer, moduleReplicaSet.Spec.Template.Spec.Module.Name))
-		err := r.Client.Update(ctx, &pod)
-		// add pod finalizer
-		if err != nil {
-			return err
-		}
-		// create module
-		module := r.generateModule(moduleReplicaSet, pod)
-		if err = r.Client.Create(ctx, module); err != nil {
-			return utils.Error(err, "Failed to create module", "moduleName", module.Name)
-		}
+
+	// allocate pod
+	err = r.doAllocatePod(ctx, toAllocatePod, moduleReplicaSet)
+	if err != nil {
+		return err
 	}
-	if moduledeploymentv1alpha1.ScaleUpThenScaleDownUpgradePolicy == moduleReplicaSet.Spec.SchedulingStrategy.UpgradePolicy && len(oldReplicaSetModules) > 0 {
-		scaleDownPod := oldReplicaSetModules[0:len(toAllocatePod)]
-		err = r.scaleUpThenScaleDownModule(ctx, scaleDownPod, moduleReplicaSet)
-		if err != nil {
-			return err
+
+	// scale down old module
+	if len(otherReplicaSetModules) > 0 {
+		deleteReplicas := int32(len(toAllocatePod))
+		// TODO 区分先装后卸，先卸后装
+		// scale down old replicaSet
+		otherReplicaSet := make(map[string]string)
+		for _, otherModule := range otherReplicaSetModules {
+			if otherModule.Labels[label.ModuleReplicasetLabel] != "" {
+				otherReplicaSet[otherModule.Labels[label.ModuleReplicasetLabel]] = otherModule.Namespace
+			}
+		}
+		for otherReplicaName := range otherReplicaSet {
+			otherModuleReplicaSet := &moduledeploymentv1alpha1.ModuleReplicaSet{}
+			err := r.Client.Get(ctx, types.NamespacedName{Namespace: otherReplicaSet[otherReplicaName], Name: otherReplicaName}, otherModuleReplicaSet)
+			if err != nil {
+				log.Log.Info("get otherModuleReplicaSet failed", "otherModuleReplicaSetName", otherModuleReplicaSet.Name)
+			}
+			if otherModuleReplicaSet.Spec.Replicas > 0 {
+				if deleteReplicas <= otherModuleReplicaSet.Spec.Replicas {
+					// other replicas >= delete replicas, scale down other replicas
+					otherModuleReplicaSet.Spec.Replicas -= deleteReplicas
+					deleteReplicas = 0
+				} else {
+					// other replicas < delete replicas, scale down other replicas to 0 and continue to find next module replicaset
+					deleteReplicas -= otherModuleReplicaSet.Spec.Replicas
+					otherModuleReplicaSet.Spec.Replicas = 0
+				}
+				if err := r.Client.Update(ctx, otherModuleReplicaSet); err != nil {
+					log.Log.Error(err, "Failed to update other replicaset", "moduleReplicaSetName", otherModuleReplicaSet.Name)
+					return err
+				}
+			}
 		}
 	}
 	log.Log.Info("finish scaleup module", "moduleReplicaSetName", moduleReplicaSet.Name)
@@ -351,7 +368,16 @@ func (r *ModuleReplicaSetReconciler) scaleup(ctx context.Context, sameReplicaSet
 
 // scale down module
 func (r *ModuleReplicaSetReconciler) scaledown(ctx context.Context, existedModuleList []moduledeploymentv1alpha1.Module, moduleReplicaSet *moduledeploymentv1alpha1.ModuleReplicaSet) error {
-	deltaReplicas := int(moduleReplicaSet.Spec.Replicas) - len(existedModuleList)
+
+	var scaleDownModuleList []moduledeploymentv1alpha1.Module
+	for _, module := range existedModuleList {
+		// filter out module with delete label
+		if module.Labels[label.DeleteModuleLabel] != "true" {
+			scaleDownModuleList = append(scaleDownModuleList, module)
+		}
+	}
+
+	deltaReplicas := int(moduleReplicaSet.Spec.Replicas) - len(scaleDownModuleList)
 	count := -deltaReplicas
 	log.Log.Info("scale down replicas", "deltaReplicas", deltaReplicas)
 
@@ -360,12 +386,21 @@ func (r *ModuleReplicaSetReconciler) scaledown(ctx context.Context, existedModul
 	if err = r.List(ctx, selectedPods, &client.ListOptions{Namespace: moduleReplicaSet.Namespace, LabelSelector: selector}); err != nil {
 		return utils.Error(err, "Failed to list pod", "moduleReplicaSetName", moduleReplicaSet.Name)
 	}
-	toDeletedModules := r.getScaleDownCandidateModules(existedModuleList, selectedPods, moduleReplicaSet)
+	toDeletedModules, moduleToPod := r.getScaleDownCandidateModules(scaleDownModuleList, selectedPods, moduleReplicaSet)
 	for _, module := range toDeletedModules {
-		module.Labels[label.DeleteModuleLabel] = "true"
-		err = r.Client.Update(ctx, &module)
-		if err != nil {
-			log.Log.Error(err, "Failed to delete module", "module", module)
+		if moduledeploymentv1alpha1.ScaleUpThenScaleDownUpgradePolicy == moduleReplicaSet.Spec.SchedulingStrategy.UpgradePolicy {
+			targetPod := moduleToPod[module.Name]
+			targetPod.Labels[label.DeletePodLabel] = "true"
+			err = r.Client.Update(ctx, targetPod)
+			if err != nil {
+				log.Log.Error(err, "Failed to update delete pod label", "module", module, "podName", targetPod.Name)
+			}
+		} else {
+			module.Labels[label.DeleteModuleLabel] = "true"
+			err = r.Client.Update(ctx, &module)
+			if err != nil {
+				log.Log.Error(err, "Failed to delete module", "module", module)
+			}
 		}
 		if count--; count == 0 {
 			break
@@ -384,10 +419,6 @@ func (r *ModuleReplicaSetReconciler) getScaleUpCandidatePods(sameReplicaSetModul
 		usedPodNames[module.Labels[label.BaseInstanceNameLabel]] = true
 	}
 
-	// get strategy, maxModuleCount from replicaSet Labels
-	strategyLabel := moduleReplicaSet.Labels[label.ModuleSchedulingStrategy]
-	strategy := moduledeploymentv1alpha1.ModuleSchedulingType(strategyLabel)
-
 	maxModuleCountLabel := selectedPods.Items[0].Labels[label.MaxModuleCount]
 	maxModuleCount, err := strconv.Atoi(maxModuleCountLabel)
 	if err != nil {
@@ -395,33 +426,10 @@ func (r *ModuleReplicaSetReconciler) getScaleUpCandidatePods(sameReplicaSetModul
 		maxModuleCount = intsets.MaxInt
 	}
 
-	if strategy == moduledeploymentv1alpha1.Scatter {
-		sort.Slice(selectedPods.Items, func(i, j int) bool {
-			count_i, err := strconv.Atoi(selectedPods.Items[i].Labels[label.ModuleInstanceCount])
-			if err != nil {
-				return true
-			}
-			count_j, err := strconv.Atoi(selectedPods.Items[j].Labels[label.ModuleInstanceCount])
-			if err != nil {
-				return true
-			}
-
-			return count_i < count_j
-		})
-	} else if strategy == moduledeploymentv1alpha1.Stacking {
-		sort.Slice(selectedPods.Items, func(i, j int) bool {
-			count_i, err := strconv.Atoi(selectedPods.Items[i].Labels[label.ModuleInstanceCount])
-			if err != nil {
-				return true
-			}
-			count_j, err := strconv.Atoi(selectedPods.Items[j].Labels[label.ModuleInstanceCount])
-			if err != nil {
-				return true
-			}
-
-			return count_i > count_j
-		})
-	}
+	// sort pod by strategy
+	strategyLabel := moduleReplicaSet.Labels[label.ModuleSchedulingStrategy]
+	strategy := moduledeploymentv1alpha1.ModuleSchedulingType(strategyLabel)
+	sortPodByStrategy(strategy, selectedPods)
 
 	// allocate pod
 	var toAllocatePod []corev1.Pod
@@ -453,12 +461,71 @@ func (r *ModuleReplicaSetReconciler) getScaleUpCandidatePods(sameReplicaSetModul
 	return toAllocatePod, nil
 }
 
+func (r *ModuleReplicaSetReconciler) doAllocatePod(ctx context.Context, toAllocatePod []corev1.Pod, moduleReplicaSet *moduledeploymentv1alpha1.ModuleReplicaSet) error {
+	for _, pod := range toAllocatePod {
+		pod.Labels[fmt.Sprintf("%s-%s", label.ModuleNameLabel, moduleReplicaSet.Spec.Template.Spec.Module.Name)] = moduleReplicaSet.Spec.Template.Spec.Module.Version
+		if _, exist := pod.Labels[label.ModuleInstanceCount]; exist {
+			count, err := strconv.Atoi(pod.Labels[label.ModuleInstanceCount])
+			if err != nil {
+				log.Log.Error(err, "failed to update module count")
+			} else {
+				pod.Labels[label.ModuleInstanceCount] = strconv.Itoa(count + 1)
+			}
+		} else {
+			pod.Labels[label.ModuleInstanceCount] = "1"
+		}
+		// add pod finalizer
+		utils.AddFinalizer(&pod.ObjectMeta, fmt.Sprintf("%s-%s", finalizer.ModuleNameFinalizer, moduleReplicaSet.Spec.Template.Spec.Module.Name))
+		err := r.Client.Update(ctx, &pod)
+		// add pod finalizer
+		if err != nil {
+			return err
+		}
+		// create module
+		module := r.generateModule(moduleReplicaSet, pod)
+		if err = r.Client.Create(ctx, module); err != nil {
+			return utils.Error(err, "Failed to create module", "moduleName", module.Name)
+		}
+	}
+	return nil
+}
+
+func sortPodByStrategy(strategy moduledeploymentv1alpha1.ModuleSchedulingType, selectedPods *corev1.PodList) {
+	if strategy == moduledeploymentv1alpha1.Scatter {
+		sort.Slice(selectedPods.Items, func(i, j int) bool {
+			count_i, err := strconv.Atoi(selectedPods.Items[i].Labels[label.ModuleInstanceCount])
+			if err != nil {
+				return true
+			}
+			count_j, err := strconv.Atoi(selectedPods.Items[j].Labels[label.ModuleInstanceCount])
+			if err != nil {
+				return true
+			}
+
+			return count_i < count_j
+		})
+	} else if strategy == moduledeploymentv1alpha1.Stacking {
+		sort.Slice(selectedPods.Items, func(i, j int) bool {
+			count_i, err := strconv.Atoi(selectedPods.Items[i].Labels[label.ModuleInstanceCount])
+			if err != nil {
+				return true
+			}
+			count_j, err := strconv.Atoi(selectedPods.Items[j].Labels[label.ModuleInstanceCount])
+			if err != nil {
+				return true
+			}
+
+			return count_i > count_j
+		})
+	}
+}
+
 // get the candidate modules to be deleted when scaling down
 func (r *ModuleReplicaSetReconciler) getScaleDownCandidateModules(
 	existedModuleList []moduledeploymentv1alpha1.Module,
 	selectedPods *corev1.PodList,
 	moduleReplicaSet *moduledeploymentv1alpha1.ModuleReplicaSet,
-) []moduledeploymentv1alpha1.Module {
+) ([]moduledeploymentv1alpha1.Module, map[string]*corev1.Pod) {
 	deltaReplicas := int(moduleReplicaSet.Spec.Replicas) - len(existedModuleList)
 	usedPodNames := make(map[string]int)
 	for idx, module := range existedModuleList {
@@ -505,13 +572,15 @@ func (r *ModuleReplicaSetReconciler) getScaleDownCandidateModules(
 	}
 
 	var candidateModules []moduledeploymentv1alpha1.Module
+	moduleToPod := make(map[string]*corev1.Pod)
 	i := 0
 	count := -deltaReplicas
 	for count > 0 && i < len(filteredPods) {
 		idx := usedPodNames[filteredPods[i].Name]
 		candidateModules = append(candidateModules, existedModuleList[idx])
+		moduleToPod[existedModuleList[idx].Name] = filteredPods[i]
 		count -= 1
 		i += 1
 	}
-	return candidateModules
+	return candidateModules, moduleToPod
 }

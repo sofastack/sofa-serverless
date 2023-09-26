@@ -287,7 +287,7 @@ func (r *ModuleDeploymentReconciler) updateModuleReplicas(
 	moduleSpec := moduleDeployment.Spec.Template.Spec
 	if replicas != newRS.Spec.Replicas || isModuleChanges(moduleSpec.Module, newRS.Spec.Template.Spec.Module) {
 		log.Log.Info("prepare to update newRS", "moduleReplicaSetName", newRS.Name)
-		newRS.Spec.Replicas = int32(replicas)
+		newRS.Spec.Replicas = replicas
 		newRS.Spec.Template.Spec.Module = moduleSpec.Module
 		err := r.Client.Update(ctx, newRS)
 		if err != nil {
@@ -297,24 +297,24 @@ func (r *ModuleDeploymentReconciler) updateModuleReplicas(
 
 		// scale down the old replicaset
 		// todo: there still some replicas of thd oldRSs when the replicas of newModuledeployment is smaller than the oldModuledeployment
-		idx := 0
-		for replicas > 0 && idx < len(oldRSs) {
-			copy := oldRSs[idx].DeepCopy()
-			if copy.Spec.Replicas > 0 {
-				if replicas >= copy.Spec.Replicas {
-					replicas -= copy.Spec.Replicas
-					copy.Spec.Replicas = 0
-				} else {
-					replicas = 0
-					copy.Spec.Replicas -= replicas
-				}
-				if err := r.Client.Update(ctx, copy); err != nil {
-					log.Log.Error(err, "Failed to update old replicaset", "moduleReplicaSetName", copy.Name)
-					return err
-				}
-			}
-			idx += 1
-		}
+		//idx := 0
+		//for replicas > 0 && idx < len(oldRSs) {
+		//	copy := oldRSs[idx].DeepCopy()
+		//	if copy.Spec.Replicas > 0 {
+		//		if replicas >= copy.Spec.Replicas {
+		//			replicas -= copy.Spec.Replicas
+		//			copy.Spec.Replicas = 0
+		//		} else {
+		//			replicas = 0
+		//			copy.Spec.Replicas -= replicas
+		//		}
+		//		if err := r.Client.Update(ctx, copy); err != nil {
+		//			log.Log.Error(err, "Failed to update old replicaset", "moduleReplicaSetName", copy.Name)
+		//			return err
+		//		}
+		//	}
+		//	idx += 1
+		//}
 
 	}
 	return nil
@@ -339,7 +339,7 @@ func (r *ModuleDeploymentReconciler) updateModuleReplicaSet(ctx context.Context,
 		log.Log.Info(fmt.Sprintf("newRs is not ready, expect replicas %v, but got %v", replicas, curReplicas))
 		return true, nil
 	}
-
+	// reach the expected replicas
 	if curReplicas == expReplicas {
 		moduleDeployment.Status.ReleaseStatus.Progress = moduledeploymentv1alpha1.ModuleDeploymentReleaseProgressCompleted
 		moduleDeployment.Status.ReleaseStatus.LastTransitionTime = metav1.Now()
