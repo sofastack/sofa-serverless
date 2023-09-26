@@ -492,32 +492,15 @@ func (r *ModuleReplicaSetReconciler) doAllocatePod(ctx context.Context, toAlloca
 	return nil
 }
 
+// sort pod by the scheduling strategy policy (scatter or stacking)
 func sortPodByStrategy(strategy moduledeploymentv1alpha1.ModuleSchedulingType, selectedPods *corev1.PodList) {
 	if strategy == moduledeploymentv1alpha1.Scatter {
 		sort.Slice(selectedPods.Items, func(i, j int) bool {
-			count_i, err := strconv.Atoi(selectedPods.Items[i].Labels[label.ModuleInstanceCount])
-			if err != nil {
-				return true
-			}
-			count_j, err := strconv.Atoi(selectedPods.Items[j].Labels[label.ModuleInstanceCount])
-			if err != nil {
-				return true
-			}
-
-			return count_i < count_j
+			return utils.GetModuleInstanceCount(selectedPods.Items[i]) < utils.GetModuleInstanceCount(selectedPods.Items[j])
 		})
 	} else if strategy == moduledeploymentv1alpha1.Stacking {
 		sort.Slice(selectedPods.Items, func(i, j int) bool {
-			count_i, err := strconv.Atoi(selectedPods.Items[i].Labels[label.ModuleInstanceCount])
-			if err != nil {
-				return true
-			}
-			count_j, err := strconv.Atoi(selectedPods.Items[j].Labels[label.ModuleInstanceCount])
-			if err != nil {
-				return true
-			}
-
-			return count_i > count_j
+			return utils.GetModuleInstanceCount(selectedPods.Items[i]) > utils.GetModuleInstanceCount(selectedPods.Items[j])
 		})
 	}
 }
