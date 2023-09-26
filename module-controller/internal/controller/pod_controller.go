@@ -85,17 +85,19 @@ func (r *PodReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		for _, module := range moduleList.Items {
 			log.Log.Info("start delete module", "moduleName", module.Name, "podName", pod.Name)
 			if pod.Labels[label.DeletePodLabel] == "true" {
-				module.Labels[label.DeleteModuleLabel] = "true"
-				err = r.Client.Update(ctx, &module)
-				if err != nil {
-					log.Log.Error(err, "delete module failed when update delete module label", "moduleName", module.Name, "podName", pod.Name)
-					return ctrl.Result{}, err
+				if module.Labels[label.DeleteModuleLabel] != "true" {
+					module.Labels[label.DeleteModuleLabel] = "true"
+					err = r.Client.Update(ctx, &module)
+					if err != nil {
+						log.Log.Error(err, "delete module failed when update delete module label", "moduleName", module.Name, "podName", pod.Name)
+						return ctrl.Result{}, err
+					}
 				}
 			} else {
 				err := r.Client.Delete(ctx, &module)
 				if err != nil && errors.IsNotFound(err) {
 					log.Log.Error(err, "delete module failed when delete pod", "moduleName", module.Name, "podName", pod.Name)
-					return ctrl.Result{}, err
+					return ctrl.Result{}, nil
 				}
 			}
 		}
