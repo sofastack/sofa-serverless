@@ -240,17 +240,15 @@ var _ = Describe("ModuleDeployment Controller", func() {
 		moduleDeployment.Spec.OperationStrategy.NeedConfirm = true
 		moduleDeployment.Spec.OperationStrategy.BatchCount = 2
 
-		It("0. prepare pods", func() {
-			Eventually(func() bool {
-				pod := preparePod(namespace, "fake-pod-use-beta")
+		It("0. prepare 4 pods", func() {
+			pods := preparePods(namespace, "fake-pod-use-beta", 4)
+			for _, pod := range pods {
 				pod.Labels[fmt.Sprintf("%s-%s", label.ModuleNameLabel, "dynamic-provider")] = "1.0.0"
-				if err := k8sClient.Create(context.TODO(), &pod); err != nil {
-					return false
-				}
+				Expect(k8sClient.Create(context.TODO(), &pod)).Should(Succeed())
 				// when install module, the podIP is necessary
 				pod.Status.PodIP = "127.0.0.1"
-				return k8sClient.Status().Update(context.TODO(), &pod) == nil
-			}, timeout, interval).Should(BeTrue())
+				Expect(k8sClient.Status().Update(context.TODO(), &pod)).Should(Succeed())
+			}
 		})
 
 		It("1. create a new moduleDeployment", func() {
@@ -263,7 +261,21 @@ var _ = Describe("ModuleDeployment Controller", func() {
 			})
 		})
 
-		It("3. clean environment", func() {
+		It("3. check if the moduleDeployment status is completed", func() {
+			Eventually(func() bool {
+				if k8sClient.Get(context.TODO(), nn, &moduleDeployment) != nil {
+					return false
+				}
+
+				if moduleDeployment.Spec.Pause != false {
+					return false
+				}
+
+				return moduleDeployment.Status.ReleaseStatus.Progress == moduledeploymentv1alpha1.ModuleDeploymentReleaseProgressCompleted
+			}, timeout, interval).Should(BeTrue())
+		})
+
+		It("4. clean environment", func() {
 			Expect(k8sClient.Delete(context.TODO(), &moduleDeployment)).Should(Succeed())
 		})
 

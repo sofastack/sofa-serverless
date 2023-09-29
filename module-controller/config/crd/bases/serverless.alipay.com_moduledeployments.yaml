@@ -211,6 +211,8 @@ spec:
                 type: integer
               releaseStatus:
                 properties:
+                  betaRelease:
+                    type: boolean
                   currentBatch:
                     description: Records the current batch serial number.
                     format: int32
@@ -221,6 +223,7 @@ spec:
                     format: date-time
                     type: string
                   nextReconcileTime:
+                    description: next reconcile time for grayTime strategy
                     format: date-time
                     type: string
                   progress:
@@ -229,6 +232,8 @@ spec:
                   updateRevision:
                     description: Records the latest revision.
                     type: string
+                required:
+                - betaRelease
                 type: object
               replicas:
                 format: int32

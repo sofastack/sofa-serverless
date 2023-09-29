@@ -202,6 +202,13 @@ func preparePod(namespaceName string, podName string) corev1.Pod {
 	return pod
 }
 
+func preparePods(namespace, prefix string, replicas int) (pods []corev1.Pod) {
+	for i := 0; i < replicas; i++ {
+		pods = append(pods, preparePod(namespace, fmt.Sprintf("%v-%v", prefix, replicas)))
+	}
+	return pods
+}
+
 var _ = AfterSuite(func() {
 	By("tearing down the test environment")
 	//err := testEnv.Stop()
