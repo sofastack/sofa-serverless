@@ -10,6 +10,7 @@
     <packaging>war</packaging>
     <name>sofa-maven-archetype Maven Webapp</name>
     <url>http://maven.apache.org</url>
+
     <dependencies>
         <dependency>
             <groupId>junit</groupId>
@@ -17,8 +18,53 @@
             <version>3.8.1</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-autoconfigure</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-web</artifactId>
+            <version>5.3.18</version>
+        </dependency>
     </dependencies>
     <build>
         <finalName>sofa-maven-archetype</finalName>
+        <plugins>
+            <plugin>
+            <groupId>com.alipay.sofa</groupId>
+            <artifactId>sofa-ark-maven-plugin</artifactId>
+            <version>2.2.3</version>
+            <executions>
+                <execution>
+                    <id>default-cli</id>
+                    <goals>
+                        <goal>repackage</goal>
+                    </goals>
+                </execution>
+            </executions>
+            <configuration>
+                <skipArkExecutable>true</skipArkExecutable>
+                <outputDirectory>./target</outputDirectory>
+                <bizName>biz1</bizName>
+                <webContextPath>biz1</webContextPath>
+                <declaredMode>true</declaredMode>
+                <!--					打包、安装和发布 ark biz-->
+                <!--					静态合并部署需要配置-->
+                <!--					<attach>true</attach>-->
+            </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-archetype-plugin</artifactId>
+                <version>3.1.2</version>
+                <configuration>
+                    <archetypeDirectory>sofa-serverless-runtime/sofa-maven-archetype</archetypeDirectory>
+                    <archetypeGroupId>com.alipay.sofa</archetypeGroupId>
+                    <archetypeArtifactId>serverless-archetype</archetypeArtifactId>
+                    <archetypeVersion>1.0.0</archetypeVersion>
+                </configuration>
+            </plugin>
+        </plugins>
     </build>
 </project>
