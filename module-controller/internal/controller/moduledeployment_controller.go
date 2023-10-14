@@ -423,6 +423,7 @@ func (r *ModuleDeploymentReconciler) generateModuleReplicas(moduleDeployment *mo
 	newLabels := moduleDeployment.Labels
 	newLabels[label.ModuleNameLabel] = moduleDeployment.Spec.Template.Spec.Module.Name
 	newLabels[label.ModuleDeploymentLabel] = moduleDeployment.Name
+	newLabels[label.DeploymentNameLabel] = moduleDeployment.Spec.BaseDeploymentName
 	newLabels[label.ModuleSchedulingStrategy] = string(moduleDeployment.Spec.SchedulingStrategy.SchedulingPolicy)
 	newLabels[label.ModuleReplicasetRevisionLabel] = strconv.Itoa(revision)
 	moduleReplicaSet := &moduledeploymentv1alpha1.ModuleReplicaSet{

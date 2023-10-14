@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	v1 "k8s.io/api/apps/v1"
 	"sort"
 	"strconv"
 
@@ -161,9 +162,18 @@ func (r *ModuleReplicaSetReconciler) Reconcile(ctx context.Context, req ctrl.Req
 			if err != nil {
 				return result, err
 			}
+			err = r.countModuleInstance(ctx, moduleReplicaSet)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+
 		} else {
 			// scale down
 			err = r.scaledown(ctx, sameReplicaSetModules, moduleReplicaSet)
+			if err != nil {
+				return reconcile.Result{}, err
+			}
+			err = r.countModuleInstance(ctx, moduleReplicaSet)
 			if err != nil {
 				return reconcile.Result{}, err
 			}
@@ -177,6 +187,67 @@ func (r *ModuleReplicaSetReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	}
 
 	return ctrl.Result{}, nil
+}
+
+func (r *ModuleReplicaSetReconciler) countModuleInstance(ctx context.Context, moduleReplicaSet *moduledeploymentv1alpha1.ModuleReplicaSet) error {
+	baseDeploymentName := moduleReplicaSet.Labels[label.DeploymentNameLabel]
+	if baseDeploymentName == "" {
+		return nil
+	}
+	deployment := &v1.Deployment{}
+	err := r.Client.Get(ctx, types.NamespacedName{Namespace: moduleReplicaSet.Namespace, Name: baseDeploymentName}, deployment)
+	if err != nil {
+		return utils.Error(err, "Failed to get deployment", "deploymentName", deployment.Name)
+	}
+	allPodSelector, err := metav1.LabelSelectorAsSelector(&moduleReplicaSet.Spec.Selector)
+	allPods := &corev1.PodList{}
+	if err = r.List(ctx, allPods, &client.ListOptions{Namespace: moduleReplicaSet.Namespace, LabelSelector: allPodSelector}); err != nil {
+		return utils.Error(err, "Failed to list pod", "moduleReplicaSetName", moduleReplicaSet.Name)
+	}
+
+	if len(allPods.Items) <= 0 {
+		return nil
+	}
+	var minInstanceCount int
+	var maxInstanceCount int
+	var totalInstanceCount int
+	for index, item := range allPods.Items {
+		var moduleInstanceCount int
+		if cntStr, ok := item.Labels[label.ModuleInstanceCount]; ok {
+			moduleInstanceCount, err = strconv.Atoi(cntStr)
+			if err != nil {
+				log.Log.Error(err, fmt.Sprintf("invalid ModuleInstanceCount in pod %v", item.Name))
+				continue
+			}
+		}
+		// 赋值第一个pod的安装数量为最小值
+		if index == 0 {
+			minInstanceCount = moduleInstanceCount
+		}
+		// 对比获取最小值
+		if minInstanceCount > moduleInstanceCount {
+			minInstanceCount = moduleInstanceCount
+		}
+		// 对比获取最大值
+		if moduleInstanceCount > maxInstanceCount {
+			maxInstanceCount = moduleInstanceCount
+		}
+		// 获取全部安装数量
+		totalInstanceCount += moduleInstanceCount
+	}
+
+	if deployment.Labels == nil {
+		deployment.Labels = map[string]string{}
+	}
+	deployment.Labels[label.MaxModuleInstanceCount] = strconv.Itoa(maxInstanceCount)
+	deployment.Labels[label.MinModuleInstanceCount] = strconv.Itoa(minInstanceCount)
+	avgInstanceCount := float64(totalInstanceCount) / float64(len(allPods.Items))
+	deployment.Labels[label.AverageModuleInstanceCount] = strconv.FormatFloat(avgInstanceCount, 'g', -1, 64)
+
+	if err = r.Client.Update(ctx, deployment); err != nil {
+		return utils.Error(err, "Failed to update moduleReplicaSet", "moduleReplicaSetName", moduleReplicaSet.Name)
+	}
+	return nil
 }
 
 // compare and update module
