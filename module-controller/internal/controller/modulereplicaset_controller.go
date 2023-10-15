@@ -162,21 +162,16 @@ func (r *ModuleReplicaSetReconciler) Reconcile(ctx context.Context, req ctrl.Req
 			if err != nil {
 				return result, err
 			}
-			err = r.countModuleInstance(ctx, moduleReplicaSet)
-			if err != nil {
-				return reconcile.Result{}, err
-			}
-
 		} else {
 			// scale down
 			err = r.scaledown(ctx, sameReplicaSetModules, moduleReplicaSet)
 			if err != nil {
 				return reconcile.Result{}, err
 			}
-			err = r.countModuleInstance(ctx, moduleReplicaSet)
-			if err != nil {
-				return reconcile.Result{}, err
-			}
+		}
+		err = r.countModuleInstance(ctx, moduleReplicaSet)
+		if err != nil {
+			return reconcile.Result{}, err
 		}
 	} else {
 		// replicas not change, directly update module
