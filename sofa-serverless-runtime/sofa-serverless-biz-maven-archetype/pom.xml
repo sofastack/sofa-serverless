@@ -6,7 +6,7 @@
         <artifactId>sofa-serverless-runtime</artifactId>
         <version>0.5.0</version>
     </parent>
-    <artifactId>sofa-maven-archetype</artifactId>
+    <artifactId>sofa-serverless-biz-maven-archetype</artifactId>
     <packaging>war</packaging>
     <name>sofa-maven-archetype Maven Webapp</name>
     <url>http://maven.apache.org</url>
