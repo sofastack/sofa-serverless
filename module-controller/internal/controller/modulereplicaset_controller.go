@@ -192,7 +192,7 @@ func (r *ModuleReplicaSetReconciler) countModuleInstance(ctx context.Context, mo
 	deployment := &v1.Deployment{}
 	err := r.Client.Get(ctx, types.NamespacedName{Namespace: moduleReplicaSet.Namespace, Name: baseDeploymentName}, deployment)
 	if err != nil {
-		return utils.Error(err, "Failed to get deployment", "deploymentName", deployment.Name)
+		return utils.Error(err, "Failed to get deployment", "deploymentName", baseDeploymentName)
 	}
 	allPodSelector, err := metav1.LabelSelectorAsSelector(&moduleReplicaSet.Spec.Selector)
 	allPods := &corev1.PodList{}
@@ -237,10 +237,10 @@ func (r *ModuleReplicaSetReconciler) countModuleInstance(ctx context.Context, mo
 	deployment.Labels[label.MaxModuleInstanceCount] = strconv.Itoa(maxInstanceCount)
 	deployment.Labels[label.MinModuleInstanceCount] = strconv.Itoa(minInstanceCount)
 	avgInstanceCount := float64(totalInstanceCount) / float64(len(allPods.Items))
-	deployment.Labels[label.AverageModuleInstanceCount] = strconv.FormatFloat(avgInstanceCount, 'g', -1, 64)
+	deployment.Labels[label.AverageModuleInstanceCount] = fmt.Sprintf("%.2f", avgInstanceCount)
 
 	if err = r.Client.Update(ctx, deployment); err != nil {
-		return utils.Error(err, "Failed to update moduleReplicaSet", "moduleReplicaSetName", moduleReplicaSet.Name)
+		return utils.Error(err, "Failed to update Deployment", "Deployment", baseDeploymentName)
 	}
 	return nil
 }

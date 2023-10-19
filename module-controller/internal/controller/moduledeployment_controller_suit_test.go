@@ -3,6 +3,7 @@ package controller
 import (
 	"context"
 	"fmt"
+	v1 "k8s.io/api/apps/v1"
 	"sigs.k8s.io/controller-runtime/pkg/log"
 	"time"
 
@@ -115,6 +116,20 @@ var _ = Describe("ModuleDeployment Controller", func() {
 			}
 			var newModuleDeployment v1alpha1.ModuleDeployment
 			Expect(k8sClient.Get(context.TODO(), key, &newModuleDeployment)).Should(Succeed())
+			if newModuleDeployment.Status.ReleaseStatus.Progress != moduledeploymentv1alpha1.ModuleDeploymentReleaseProgressCompleted {
+				time.Sleep(30 * time.Second)
+			}
+		})
+	})
+
+	Context("update replicas for module deployment", func() {
+		It("update module replicas", func() {
+			key := types.NamespacedName{
+				Name:      moduleDeploymentName,
+				Namespace: namespace,
+			}
+			var newModuleDeployment v1alpha1.ModuleDeployment
+			Expect(k8sClient.Get(context.TODO(), key, &newModuleDeployment)).Should(Succeed())
 			newModuleDeployment.Spec.Replicas += 1
 			Eventually(func() bool {
 				err := k8sClient.Update(context.TODO(), &newModuleDeployment)
@@ -158,6 +173,31 @@ var _ = Describe("ModuleDeployment Controller", func() {
 				return newRS != nil &&
 					newRS.Status.Replicas == newRS.Spec.Replicas &&
 					newRS.Status.Replicas == newModuleDeployment.Spec.Replicas
+			}, timeout, interval).Should(BeTrue())
+
+			Eventually(func() bool {
+				time.Sleep(30 * time.Second)
+				baseDeploymentName := moduleDeployment.Spec.BaseDeploymentName
+				baseDeployment := &v1.Deployment{}
+				key := types.NamespacedName{
+					Name:      baseDeploymentName,
+					Namespace: namespace,
+				}
+				err := k8sClient.Get(context.TODO(), key, baseDeployment)
+				if err != nil {
+					return false
+				}
+				deploymentLabel := baseDeployment.Labels
+				if deploymentLabel == nil {
+					return false
+				}
+				maxInstanceCount := deploymentLabel[label.MaxModuleInstanceCount]
+				minInstanceCount := deploymentLabel[label.MinModuleInstanceCount]
+				avgInstanceCount := deploymentLabel[label.AverageModuleInstanceCount]
+				if maxInstanceCount == "" || minInstanceCount == "" || avgInstanceCount == "" {
+					return false
+				}
+				return maxInstanceCount == "1" && minInstanceCount == "1" && avgInstanceCount == "1.00"
 			}, timeout, interval).Should(BeTrue())
 		})
 	})

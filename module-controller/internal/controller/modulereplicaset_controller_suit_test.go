@@ -121,6 +121,7 @@ var _ = Describe("ModuleReplicaSet Controller", func() {
 			module1.Labels[label.ModuleReplicasetLabel] = oldModuleReplicaSetName
 			Expect(k8sClient.Create(context.TODO(), &module1)).Should(Succeed())
 
+			time.Sleep(30 * time.Second)
 			var newModuleReplicaSet v1alpha1.ModuleReplicaSet
 			k8sClient.Get(context.TODO(), key, &newModuleReplicaSet)
 			newModuleReplicaSet.Spec.Replicas = 1
