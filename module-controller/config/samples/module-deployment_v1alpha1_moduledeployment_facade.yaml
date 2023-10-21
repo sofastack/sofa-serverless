@@ -20,7 +20,7 @@ spec:
   operationStrategy:
     needConfirm: true
     useBeta: false
-    batchCount: 1
+    batchCount: 3
   schedulingStrategy:
     upgradePolicy: uninstall_then_install
     schedulingPolicy: scatter
