@@ -106,19 +106,12 @@ var _ = Describe("ModuleDeployment Controller", func() {
 					newModuleDeployment.Spec.Replicas)
 			}, timeout, interval).Should(BeTrue())
 		})
+
 	})
 
-	Context("update replicas for module deployment", func() {
-		It("update module replicas", func() {
-			key := types.NamespacedName{
-				Name:      moduleDeploymentName,
-				Namespace: namespace,
-			}
-			var newModuleDeployment v1alpha1.ModuleDeployment
-			Expect(k8sClient.Get(context.TODO(), key, &newModuleDeployment)).Should(Succeed())
-			if newModuleDeployment.Status.ReleaseStatus.Progress != moduledeploymentv1alpha1.ModuleDeploymentReleaseProgressCompleted {
-				time.Sleep(30 * time.Second)
-			}
+	Context("wait moduleDeployment Completed", func() {
+		It("wait moduleDeployment Completed", func() {
+			waitModuleDeploymentCompleted(moduleDeploymentName, namespace)
 		})
 	})
 
@@ -136,6 +129,8 @@ var _ = Describe("ModuleDeployment Controller", func() {
 				log.Log.Error(err, "update module replicas error")
 				return err == nil
 			}, timeout, interval).Should(BeTrue())
+
+			waitModuleDeploymentCompleted(moduleDeploymentName, namespace)
 
 			Eventually(func() bool {
 				set := map[string]string{
@@ -175,8 +170,9 @@ var _ = Describe("ModuleDeployment Controller", func() {
 					newRS.Status.Replicas == newModuleDeployment.Spec.Replicas
 			}, timeout, interval).Should(BeTrue())
 
+			waitModuleDeploymentCompleted(moduleDeploymentName, namespace)
+
 			Eventually(func() bool {
-				time.Sleep(30 * time.Second)
 				baseDeploymentName := moduleDeployment.Spec.BaseDeploymentName
 				baseDeployment := &v1.Deployment{}
 				key := types.NamespacedName{
@@ -339,6 +335,21 @@ var _ = Describe("ModuleDeployment Controller", func() {
 		})
 	})
 })
+
+func waitModuleDeploymentCompleted(moduleDeploymentName string, namespace string) {
+	key := types.NamespacedName{
+		Name:      moduleDeploymentName,
+		Namespace: namespace,
+	}
+	newModuleDeployment := &v1alpha1.ModuleDeployment{}
+	Expect(k8sClient.Get(context.TODO(), key, newModuleDeployment)).Should(Succeed())
+	progress := newModuleDeployment.Status.ReleaseStatus.Progress
+	if progress == moduledeploymentv1alpha1.ModuleDeploymentReleaseProgressCompleted {
+		return
+	}
+	time.Sleep(5 * time.Second)
+	waitModuleDeploymentCompleted(moduleDeploymentName, namespace)
+}
 
 func checkModuleDeploymentReplicas(nn types.NamespacedName, replicas int32) bool {
 	set := map[string]string{
