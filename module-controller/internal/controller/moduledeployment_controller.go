@@ -198,10 +198,23 @@ func (r *ModuleDeploymentReconciler) handleDeletingModuleDeployment(ctx context.
 	}
 
 	if existReplicaset {
+		batchCount := moduleDeployment.Status.ReleaseStatus.RealBatchCount
+		deleteNum := int32(math.Ceil(float64(moduleDeployment.Spec.Replicas) / float64(batchCount)))
+
+		// delete modules in batches
 		for i := 0; i < len(replicaSetList.Items); i++ {
-			err := r.Client.Delete(ctx, &replicaSetList.Items[i])
-			if err != nil {
-				return ctrl.Result{}, utils.Error(err, "Failed to delete moduleReplicaSet", "moduleReplicaSetName", replicaSetList.Items[i].Name)
+			if deleteNum < replicaSetList.Items[i].Spec.Replicas {
+				replicaSetList.Items[i].Spec.Replicas -= deleteNum
+				err := r.Client.Update(ctx, &replicaSetList.Items[i])
+				if err != nil {
+					return ctrl.Result{}, utils.Error(err, "Failed to update moduleReplicaSet", "moduleReplicaSetName", replicaSetList.Items[i].Name)
+				}
+			} else {
+				deleteNum -= replicaSetList.Items[i].Spec.Replicas
+				err := r.Client.Delete(ctx, &replicaSetList.Items[i])
+				if err != nil {
+					return ctrl.Result{}, utils.Error(err, "Failed to delete moduleReplicaSet", "moduleReplicaSetName", replicaSetList.Items[i].Name)
+				}
 			}
 		}
 		requeueAfter := utils.GetNextReconcileTime(moduleDeployment.DeletionTimestamp.Time)
@@ -355,7 +368,7 @@ func (r *ModuleDeploymentReconciler) updateModuleReplicaSet(ctx context.Context,
 	}
 
 	// wait moduleReplicaset ready
-	if newRS.Spec.Replicas != curReplicas {
+	if newRS.Spec.Replicas > curReplicas+moduleDeployment.Spec.OperationStrategy.MaxUnavailable.IntVal {
 		log.Log.Info(fmt.Sprintf("newRs is not ready, expect replicas %v, but got %v", newRS.Spec.Replicas, curReplicas))
 		return ctrl.Result{Requeue: true, RequeueAfter: utils.GetNextReconcileTime(time.Now())}, nil
 	}
