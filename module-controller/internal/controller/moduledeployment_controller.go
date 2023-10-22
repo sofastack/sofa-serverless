@@ -103,7 +103,6 @@ func (r *ModuleDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 	}
 
 	releaseStatus := moduleDeployment.Status.ReleaseStatus
-	log.Log.Info("releaseStatus ", "releaseStatus", releaseStatus.Progress)
 	switch releaseStatus.Progress {
 	case moduledeploymentv1alpha1.ModuleDeploymentReleaseProgressInit:
 		handleInitModuleDeployment(moduleDeployment, newRS)
@@ -124,7 +123,6 @@ func (r *ModuleDeploymentReconciler) Reconcile(ctx context.Context, req ctrl.Req
 				return ctrl.Result{}, err
 			}
 		}
-		return ctrl.Result{}, nil
 	case moduledeploymentv1alpha1.ModuleDeploymentReleaseProgressWaitingForConfirmation:
 		moduleDeployment.Spec.Pause = true
 		if err := r.Update(ctx, moduleDeployment); err != nil {
