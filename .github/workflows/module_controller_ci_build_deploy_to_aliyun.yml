@@ -146,6 +146,7 @@ jobs:
           kubectl exec -it $podname -- sh -c 'grep "dynamic-provider:1.0.0 started" logs/stock-mng/sofa-ark/*.log'
           
 
+
       - name: Offline moduledeployment
         run: |
           kubectl apply -f config/samples/module-deployment_v1alpha1_moduledeployment_offline.yaml
@@ -181,3 +182,76 @@ jobs:
           kubectl exec -it $podname -- sh -c 'ls -al logs/stock-mng/sofa-ark'
           kubectl exec -it $podname -- sh -c 'grep "dynamic-provider:1.0.0 started" logs/stock-mng/sofa-ark/*.log'
           
+          
+          
+          - name: scaleup moduledeployment
+           run: |
+             kubectl apply -f config/samples/module-deployment_v1alpha1_moduledeployment_scaleup.yaml
+
+          - name: get moduledeployment
+           run: |
+             kubectl get moduledeployment
+
+          - name: get modulereplicaset
+           run: |
+             kubectl get modulereplicaset
+
+          - run: sleep 15
+
+          - name: get module
+           run: |
+             kubectl get module -oyaml
+
+          - name: scaleup module
+           run: |
+             moduleCount=$(kubectl get module | wc -l)
+             if [[ $moduleCount -lt 3 ]]; then
+               echo "ERROR: module扩容失败"
+               exit 3
+             fi
+
+          - name: check module
+           run: |
+             podname=$(kubectl get pod -l app=dynamic-stock -o name)
+             kubectl exec -it $podname -- sh -c 'ls -al'
+             kubectl exec -it $podname -- sh -c 'ls -al logs'
+             kubectl exec -it $podname -- sh -c 'ls -al logs/stock-mng'
+             kubectl exec -it $podname -- sh -c 'ls -al logs/stock-mng/sofa-ark'
+             kubectl exec -it $podname -- sh -c 'grep "dynamic-provider:1.0.0 started" logs/stock-mng/sofa-ark/*.log' 
+
+
+
+          - name: scaledown moduledeployment
+            run: |
+              kubectl apply -f config/samples/module-deployment_v1alpha1_moduledeployment_scaledown.yaml
+
+          - name: get moduledeployment
+            run: |
+              kubectl get moduledeployment
+
+          - name: get modulereplicaset
+            run: |
+              kubectl get modulereplicaset
+
+          - run: sleep 15
+
+          - name: get module
+            run: |
+              kubectl get module -oyaml
+
+          - name: scaledown module
+            run: |
+              moduleCount=$(kubectl get module | wc -l)
+              if [[ $moduleCount -gt 2 ]]; then
+                echo "ERROR: module缩容失败"
+                exit 3
+              fi
+
+          - name: check module
+            run: |
+              podname=$(kubectl get pod -l app=dynamic-stock -o name)
+              kubectl exec -it $podname -- sh -c 'ls -al'
+              kubectl exec -it $podname -- sh -c 'ls -al logs'
+              kubectl exec -it $podname -- sh -c 'ls -al logs/stock-mng'
+              kubectl exec -it $podname -- sh -c 'ls -al logs/stock-mng/sofa-ark'
+              kubectl exec -it $podname -- sh -c 'grep "dynamic-provider:1.0.0 started" logs/stock-mng/sofa-ark/*.log'
