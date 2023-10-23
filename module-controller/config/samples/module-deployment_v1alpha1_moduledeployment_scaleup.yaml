@@ -23,6 +23,6 @@ spec:
     useBeta: false
     batchCount: 1
   schedulingStrategy:
-    upgradePolicy: scaleup_then_scaledown
+    upgradePolicy: install_then_uninstall
     schedulingPolicy: scatter
 
