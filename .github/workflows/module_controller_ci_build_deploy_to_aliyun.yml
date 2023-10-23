@@ -244,7 +244,7 @@ jobs:
               moduleCount=$(kubectl get module | wc -l)
               if [[ $moduleCount -gt 2 ]]; then
                 echo "ERROR: module缩容失败"
-                exit 3
+                exit 4
               fi
 
           - name: check module
