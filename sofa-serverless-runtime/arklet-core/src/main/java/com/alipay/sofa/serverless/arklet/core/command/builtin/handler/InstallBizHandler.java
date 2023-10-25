@@ -19,6 +19,11 @@ package com.alipay.sofa.serverless.arklet.core.command.builtin.handler;
 import com.alipay.sofa.ark.api.ClientResponse;
 import com.alipay.sofa.ark.api.ResponseCode;
 import com.alipay.sofa.ark.common.util.StringUtils;
+import com.alipay.sofa.ark.loader.JarBizArchive;
+import com.alipay.sofa.ark.loader.archive.JarFileArchive;
+import com.alipay.sofa.ark.loader.jar.JarFile;
+import com.alipay.sofa.ark.spi.archive.BizArchive;
+import com.alipay.sofa.ark.spi.service.biz.BizFactoryService;
 import com.alipay.sofa.serverless.arklet.core.command.builtin.BuiltinCommand;
 import com.alipay.sofa.serverless.arklet.core.command.meta.AbstractCommandHandler;
 import com.alipay.sofa.serverless.arklet.core.command.meta.Command;
@@ -30,9 +35,15 @@ import com.alipay.sofa.serverless.arklet.core.common.exception.CommandValidation
 import lombok.Getter;
 import lombok.Setter;
 
+import java.io.File;
+import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.lang.management.MemoryPoolMXBean;
 import java.util.List;
+import java.util.jar.Attributes;
+
+import static com.alipay.sofa.ark.spi.constant.Constants.ARK_BIZ_NAME;
+import static com.alipay.sofa.ark.spi.constant.Constants.ARK_BIZ_VERSION;
 
 /**
  * @author mingmen
@@ -43,6 +54,8 @@ public class InstallBizHandler
                               AbstractCommandHandler<InstallBizHandler.Input, InstallBizHandler.InstallBizClientResponse>
                                                                                                                          implements
                                                                                                                          ArkBizOps {
+
+    private static BizFactoryService bizFactoryService;
 
     @Override
     public Output<InstallBizClientResponse> handle(Input input) {
@@ -85,8 +98,32 @@ public class InstallBizHandler
         return BuiltinCommand.INSTALL_BIZ;
     }
 
+    private void extractBizInfoFromJarFile(Input input) {
+        if (input == null || StringUtils.isEmpty(input.getBizUrl())) {
+            return;
+        }
+        try {
+            File file = new File(input.getBizUrl());
+            JarFile bizFile = new JarFile(file);
+            JarFileArchive jarFileArchive = new JarFileArchive(bizFile);
+            BizArchive bizArchive = new JarBizArchive(jarFileArchive);
+            Attributes manifestMainAttributes = bizArchive.getManifest().getMainAttributes();
+            String bizName = manifestMainAttributes.getValue(ARK_BIZ_NAME);
+            String bizVersion = manifestMainAttributes.getValue(ARK_BIZ_VERSION);
+            // 如果bizName和bizVersion都不为空，则覆盖原始输入中的相应字段
+            if (!StringUtils.isEmpty(bizName) && !StringUtils.isEmpty(bizVersion)) {
+                input.setBizName(bizName);
+                input.setBizVersion(bizVersion);
+            }
+        } catch (IOException e) {
+        }
+    }
+
     @Override
     public void validate(Input input) throws CommandValidationException {
+        // 先尝试从bizUrl关联的jar包中提取bizName和bizVersion
+        extractBizInfoFromJarFile(input);
+
         notBlank(input.getBizName(), "bizName should not be blank");
         notBlank(input.getBizVersion(), "bizVersion should not be blank");
         isTrue(!input.isAsync() || !StringUtils.isEmpty(input.getRequestId()),
