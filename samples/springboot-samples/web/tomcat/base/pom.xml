@@ -35,6 +35,24 @@
 		<dependency>
 			<groupId>com.alipay.sofa.serverless</groupId>
 			<artifactId>sofa-serverless-base-starter</artifactId>
+			<exclusions>
+				<exclusion>
+					<groupId>com.alipay.sofa</groupId>
+					<artifactId>sofa-ark-springboot-starter</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>com.alipay.sofa</groupId>
+			<artifactId>sofa-ark-springboot-starter</artifactId>
+			<version>2.2.4-SNAPSHOT-TEST</version>
+			<scope>system</scope>
+			<systemPath>/Users/chanyang/Work/sofa-ark/sofa-ark-parent/support/ark-springboot-integration/ark-springboot-starter/target/sofa-ark-springboot-starter-2.2.4-SNAPSHOT-TEST.jar</systemPath>
+		</dependency>
+		<dependency>
+			<groupId>com.alipay.sofa</groupId>
+			<artifactId>sofa-ark-support-starter</artifactId>
+			<version>2.2.3</version>
 		</dependency>
 		<!-- end 动态模块相关依赖 -->
 
@@ -42,6 +60,27 @@
 		<dependency>
 			<groupId>com.alipay.sofa</groupId>
 			<artifactId>web-ark-plugin</artifactId>
+			<exclusions>
+				<exclusion>
+					<groupId>com.alipay.sofa</groupId>
+					<artifactId>log-sofa-boot-starter</artifactId>
+				</exclusion>
+			</exclusions>
+		</dependency>
+		<dependency>
+			<groupId>com.alipay.sofa</groupId>
+			<artifactId>log-sofa-boot-starter</artifactId>
+			<version>999-not-exist</version>
+			<exclusions>
+				<exclusion>
+					<groupId>com.alipay.sofa</groupId>
+					<artifactId>sofa-boot-alipay-autoconfigure</artifactId>
+				</exclusion>
+				<!--				<exclusion>
+                                    <groupId>com.alipay.sofa</groupId>
+                                    <artifactId>sofa-boot-alipay</artifactId>
+                                </exclusion>-->
+			</exclusions>
 		</dependency>
 		<!-- end 单 host 部署的依赖 -->
 	</dependencies>

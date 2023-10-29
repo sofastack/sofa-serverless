@@ -1,10 +1,7 @@
 package com.alipay.sofa.biz1.mapper;
 
 import com.alipay.sofa.biz1.model.Student;
-import org.apache.ibatis.annotations.Delete;
-import org.apache.ibatis.annotations.Insert;
-import org.apache.ibatis.annotations.Select;
-import org.apache.ibatis.annotations.Update;
+import org.apache.ibatis.annotations.*;
 
 import java.util.List;
 
@@ -12,6 +9,7 @@ import java.util.List;
  * @author: yuanyuan
  * @date: 2023/10/18 8:49 下午
  */
+@Mapper
 public interface StudentMapper {
 
     @Select("SELECT * FROM student")
