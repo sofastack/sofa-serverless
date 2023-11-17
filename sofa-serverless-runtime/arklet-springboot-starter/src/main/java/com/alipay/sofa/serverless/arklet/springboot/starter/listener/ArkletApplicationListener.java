@@ -27,7 +27,6 @@ import com.alipay.sofa.serverless.arklet.core.common.log.ArkletLogger;
 import com.alipay.sofa.serverless.arklet.core.common.log.ArkletLoggerFactory;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ApplicationContextEvent;
-import org.springframework.context.event.ContextClosedEvent;
 import org.springframework.context.event.ContextRefreshedEvent;
 
 /**
@@ -37,11 +36,6 @@ import org.springframework.context.event.ContextRefreshedEvent;
 @SuppressWarnings("rawtypes")
 public class ArkletApplicationListener implements ApplicationListener<ApplicationContextEvent> {
 
-    private static final ArkletLogger LOGGER         = ArkletLoggerFactory.getDefaultLogger();
-
-    private final CommandService      commandService = ArkletComponentRegistry
-                                                         .getCommandServiceInstance();
-
     @Override
     public void onApplicationEvent(ApplicationContextEvent event) {
         // 非基座应用直接跳过
@@ -49,15 +43,10 @@ public class ArkletApplicationListener implements ApplicationListener<Applicatio
             return;
         }
         if (event instanceof ContextRefreshedEvent) {
-            List<AbstractCommandHandler> handlers = commandService.listAllHandlers();
+            List<AbstractCommandHandler> handlers = ArkletComponentRegistry
+                    .getCommandServiceInstance().listAllHandlers();
             String commands = handlers.stream().map(s -> s.command().getId()).collect(Collectors.joining(", "));
-            LOGGER.info("total supported commands:{}", commands);
+            ArkletLoggerFactory.getDefaultLogger().info("total supported commands:{}", commands);
         }
-        if (event instanceof ContextClosedEvent) {
-            // destroy arklet components
-            ArkletComponentRegistry componentRegistry = event.getApplicationContext().getBean(ArkletComponentRegistry.class);
-            componentRegistry.destroyComponents();
-        }
-
     }
 }
