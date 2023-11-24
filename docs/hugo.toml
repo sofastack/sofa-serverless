@@ -1,4 +1,4 @@
-baseURL = "/"
+baseURL = ""
 title = "SOFAServerless"
 
 # Language settings
@@ -54,7 +54,7 @@ anchor = "smart"
 [services]
 [services.googleAnalytics]
 # Comment out the next line to disable GA tracking. Also disables the feature described in [params.ui.feedback].
-id = "UA-00000000-0"
+id = "G-DZ8Q3F0GZ7"
 
 # Language configuration
 
@@ -93,10 +93,12 @@ time_format_blog = "2006.02.01"
 
 # Comment out if you don't want the "print entire section" link enabled.
 [outputs]
-section = ["HTML", "print", "RSS"]
+section = ["HTML", "print"]
 
 [params]
-copyright = "The SOFAServerless Community"
+copyright = "SOFAServerless 开源社区"
+customcss = ["/search/pagefind-ui.css"]
+customjs = ["/search/pagefind-ui.js", "/js/init.js"]
 
 # First one is picked as the Twitter card image if not set on page.
 # images = ["images/project-illustration.png"]
@@ -113,11 +115,11 @@ archived_version = false
 # The version number for the version of the docs represented in this doc set.
 # Used in the "version-banner" partial to display a version number for the
 # current doc set.
-version = "0.5.0"
+version = "0.6.0"
 
 # A link to latest version of the docs. Used in the "version-banner" partial to
 # point people to the main doc site.
-url_latest_version = "https://sofaserverless.netlify.app/user-docs"
+url_latest_version = "/docs"
 
 # Repository configuration (URLs for in-page links to opening issues and suggesting changes)
 github_repo = "https://github.com/sofastack/sofa-serverless"
@@ -125,7 +127,7 @@ github_repo = "https://github.com/sofastack/sofa-serverless"
 #github_project_repo = "https://github.com/sofastack/sofa-serverless"
 
 # Specify a value here if your content directory is not in your repo's root directory
-# github_subdir = "docs"
+github_subdir = "docs"
 
 # Uncomment this if your GitHub repo does not have "main" as the default branch,
 # or specify a new value if you want to reference another branch in your GitHub links
@@ -138,7 +140,7 @@ gcs_engine_id = "d72aa9b2712488cc3"
 algolia_docsearch = false
 
 # Enable Lunr.js offline search
-offlineSearch = true
+offlineSearch = false
 
 # Enable syntax highlighting and copy buttons on code blocks with Prism
 prism_syntax_highlighting = true
@@ -146,12 +148,11 @@ prism_syntax_highlighting = true
 # User interface configuration
 [params.ui]
 #  Set to true to disable breadcrumb navigation.
-breadcrumb_disable = false
+breadcrumb_disable = true
 # Set to true to disable the About link in the site footer
 footer_about_disable = false
 # Set to false if you don't want to display a logo (/assets/icons/logo.svg) in the top navbar
-# 等 Logo 设计完成再解注
-navbar_logo = false
+navbar_logo = true
 # Set to true if you don't want the top navbar to be translucent when over a `block/cover`, like on the homepage.
 navbar_translucent_over_cover_disable = false
 # Enable to show the side bar menu in its compact state.
@@ -212,7 +213,6 @@ no = '很抱歉文档对您没帮助。邀请您<a href="https://github.com/sofa
 #  desc = "Discuss development issues around the project"
 
 # hugo module configuration
-
 [module]
   # uncomment line below for temporary local development of module
   # replacements = "github.com/google/docsy -> ../../docsy"

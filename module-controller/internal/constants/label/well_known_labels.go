@@ -1,6 +1,8 @@
 package label
 
 const (
+	DeploymentNameLabel = "serverless.alipay.com/deployment-name"
+
 	ModuleNameLabel = "serverless.alipay.com/module-name"
 
 	ModuleVersionLabel = "serverless.alipay.com/module-version"
@@ -21,6 +23,12 @@ const (
 
 	ModuleInstanceCount = "serverless.alipay.com/module-instance-count"
 
+	MaxModuleInstanceCount = "serverless.alipay.com/max-module-instance-count-on-base"
+
+	MinModuleInstanceCount = "serverless.alipay.com/min-module-instance-count-on-base"
+
+	AverageModuleInstanceCount = "serverless.alipay.com/average-module-instance-count-on-base"
+
 	ModuleSchedulingStrategy = "serverless.alipay.com/module-scheduling-strategy"
 
 	MaxModuleCount = "serverless.alipay.com/max-module-count"
@@ -30,4 +38,6 @@ const (
 	DeletePodLabel = "serverless.alipay.com/delete-pod"
 
 	DeletePodDirectlyLabel = "serverless.alipay.com/delete-pod-directly"
+
+	ModuleLabelPrefix = "module.serverless.alipay.com/"
 )
