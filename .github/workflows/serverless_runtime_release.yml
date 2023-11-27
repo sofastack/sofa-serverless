@@ -47,7 +47,7 @@ jobs:
           docker run -p 2181:2181 -it --name zookeeper --restart always -d zookeeper:3.9.0
           sudo apt-get install redis-server -y
           sudo systemctl start redis-server
-          sudo cp samples/ccbin/arkctl /usr/bin/arkctl
+          sudo cp .github/workflows/ccbin/arkctl /usr/bin/arkctl
 
       - name: Run jdk8 serverless runtime test
         run: |

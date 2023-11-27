@@ -80,12 +80,12 @@ function arkctl_module_biz_install_test() {
   # 卸载模块
   uninstallResult=$(curl --location 'http://localhost:1238/uninstallBiz' \
   --header 'Content-Type: application/json' \
-  --data '{
-      "bizName":"$bizName",
-      "bizVersion":"$bizVersion"
-  }')
+  --data "{
+      \"bizName\":\"$bizName\",
+      \"bizVersion\":\"$bizVersion\"
+  }")
   # 校验卸载
-  if echo uninstallResult | grep -q "Uninstall biz: $bizName:$bizVersion success."; then
+  if echo $uninstallResult | grep -q "Uninstall biz: $bizName:$bizVersion success."; then
       echo "biz $bizName unInstall success"
   else
       echo "biz $bizName unInstall failed：$uninstallResult"
