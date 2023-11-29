@@ -25,15 +25,15 @@ defaults:
     working-directory: sofa-serverless-runtime
 
 jobs:
-  unit-test-for-jdk8:
+  unit-test-for-jdk17:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
       - name: Setup Java JDK
         uses: actions/setup-java@v3
-        with: 
+        with:
           distribution: adopt
-          java-version: 8
+          java-version: 17
           cache: maven
 
       - name: Test
