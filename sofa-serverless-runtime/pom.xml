@@ -497,6 +497,10 @@
             </properties>
             <activation>
                 <jdk>17</jdk>
+                <property>
+                    <name>profilerProperty</name>
+                    <value>17-snapshot</value>
+                </property>
             </activation>
         </profile>
     <!--
@@ -515,6 +519,10 @@
             </properties>
             <activation>
                 <jdk>17</jdk>
+                <property>
+                    <name>profilerProperty</name>
+                    <value>17-release</value>
+                </property>
             </activation>
         </profile>
 
@@ -535,6 +543,10 @@
             </properties>
             <activation>
                 <jdk>8</jdk>
+                <property>
+                    <name>profilerProperty</name>
+                    <value>8-snapshot</value>
+                </property>
             </activation>
         </profile>
 
@@ -555,6 +567,10 @@
             </properties>
             <activation>
                 <jdk>8</jdk>
+                <property>
+                    <name>profilerProperty</name>
+                    <value>8-release</value>
+                </property>
             </activation>
         </profile>
 
