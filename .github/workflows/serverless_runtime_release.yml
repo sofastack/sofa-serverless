@@ -22,7 +22,7 @@ jobs:
           cache: maven
       - name: Build with Maven
         working-directory: sofa-serverless-runtime
-        run: mvn clean install -P8-release -DskipTests -B -U -e && sh ./check_format.sh
+        run: mvn clean install  -DprofilerProperty=8-release -DskipTests -B -U -e && sh ./check_format.sh
 
       - name: Set up Docker
         uses: docker/metadata-action@v3
@@ -64,7 +64,7 @@ jobs:
 
       - name: Build with Maven
         working-directory: sofa-serverless-runtime
-        run: mvn clean install -P17-release -DskipTests -B -U -e && sh ./check_format.sh
+        run: mvn clean install  -DprofilerProperty=17-release -DskipTests -B -U -e && sh ./check_format.sh
 
       - name: Run jdk17 serverless runtime test
         run: |
