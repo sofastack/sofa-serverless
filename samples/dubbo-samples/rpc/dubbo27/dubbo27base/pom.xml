@@ -43,6 +43,11 @@
 			<version>${sofa.serverless.runtime.version}</version>
 		</dependency>
 		<dependency>
+			<groupId>com.alipay.sofa.serverless</groupId>
+			<artifactId>sofa-serverless-adapter-dubbo2.7</artifactId>
+			<version>${sofa.serverless.runtime.version}</version>
+		</dependency>
+		<dependency>
 			<groupId>com.lmax</groupId>
 			<artifactId>disruptor</artifactId>
 		</dependency>
@@ -52,11 +57,11 @@
 			<version>0.0.1-SNAPSHOT</version>
 		</dependency>
 		<!-- Dubbo Spring Boot Starter -->
-		<dependency>
-			<groupId>com.alipay.sofa.serverless</groupId>
-			<artifactId>sofa-serverless-adapter-dubbo27</artifactId>
-			<version>0.5.1</version>
-		</dependency>
+<!--		<dependency>-->
+<!--			<groupId>com.alipay.sofa.serverless</groupId>-->
+<!--			<artifactId>sofa-serverless-adapter-dubbo27</artifactId>-->
+<!--			<version>0.5.1</version>-->
+<!--		</dependency>-->
 		<dependency>
 			<groupId>org.apache.dubbo</groupId>
 			<artifactId>dubbo-spring-boot-starter</artifactId>
