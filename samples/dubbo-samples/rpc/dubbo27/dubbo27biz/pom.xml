@@ -41,6 +41,12 @@
 			<scope>provided</scope>
 		</dependency>
 		<dependency>
+			<groupId>com.alipay.sofa.serverless</groupId>
+			<artifactId>sofa-serverless-adapter-dubbo2.7</artifactId>
+			<version>${sofa.serverless.runtime.version}</version>
+			<scope>provided</scope>
+		</dependency>
+		<dependency>
 			<groupId>org.projectlombok</groupId>
 			<artifactId>lombok</artifactId>
 			<scope>provided</scope>
