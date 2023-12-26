@@ -76,6 +76,7 @@
     </scm>
 
     <modules>
+        <module>sofa-serverless-base-package-maven-plugin</module>
         <module>sofa-serverless-common</module>
         <module>sofa-serverless-base-starter</module>
         <module>sofa-serverless-base-plugin</module>
