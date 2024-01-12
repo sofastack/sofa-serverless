@@ -20,7 +20,7 @@
     <properties>
         <spring.boot.version>3.0.9</spring.boot.version>
         <java.version>17</java.version>
-        <sofa.ark.version>3.0.1</sofa.ark.version>
+        <sofa.ark.version>3.0.2-SNAPSHOT</sofa.ark.version>
         <sofa.serverless.runtime.version>0.5.5-jdk17</sofa.serverless.runtime.version>
         <disruptor.version>3.4.2</disruptor.version>
         <os.plugin.version>1.7.1</os.plugin.version>
@@ -32,6 +32,7 @@
         <module>logging/log4j2/base</module>
         <module>logging/log4j2/biz1</module>
         <module>logging/log4j2/biz2</module>
+        <module>logging/logback</module>
         <module>web/tomcat/base</module>
         <module>web/tomcat/biz1</module>
         <module>web/tomcat/biz2</module>
@@ -102,6 +103,25 @@
                 <groupId>com.alipay.sofa.serverless</groupId>
                 <artifactId>sofa-serverless-app-starter</artifactId>
                 <version>${sofa.serverless.runtime.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>com.alipay.sofa</groupId>
+                <artifactId>log-sofa-boot-starter</artifactId>
+                <version>3.9.1</version>
+            </dependency>
+
+            <dependency>
+                <!-- 增加适配 springboot3 的 sofa-common-tools 版本 -->
+                <groupId>com.alipay.sofa.common</groupId>
+                <artifactId>sofa-common-tools</artifactId>
+                <version>2.0.3</version>
+                <exclusions>
+                    <exclusion>
+                        <groupId>com.google.guava</groupId>
+                        <artifactId>*</artifactId>
+                    </exclusion>
+                </exclusions>
             </dependency>
         </dependencies>
     </dependencyManagement>
