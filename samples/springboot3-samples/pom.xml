@@ -6,7 +6,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.0.9</version>
+        <version>3.2.1</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
 
@@ -18,10 +18,10 @@
     <packaging>pom</packaging>
 
     <properties>
-        <spring.boot.version>3.0.9</spring.boot.version>
+        <spring.boot.version>3.2.1</spring.boot.version>
         <java.version>17</java.version>
         <sofa.ark.version>3.0.2-SNAPSHOT</sofa.ark.version>
-        <sofa.serverless.runtime.version>0.5.5-jdk17</sofa.serverless.runtime.version>
+        <sofa.serverless.runtime.version>0.5.6-jdk17-SNAPSHOT</sofa.serverless.runtime.version>
         <disruptor.version>3.4.2</disruptor.version>
         <os.plugin.version>1.7.1</os.plugin.version>
         <protobuf.plugin.version>0.6.1</protobuf.plugin.version>
@@ -123,6 +123,17 @@
                     </exclusion>
                 </exclusions>
             </dependency>
+
+<!--            <dependency>-->
+<!--                <groupId>ch.qos.logback</groupId>-->
+<!--                <artifactId>logback-classic</artifactId>-->
+<!--                <version>${logback.version}</version>-->
+<!--            </dependency>-->
+<!--            <dependency>-->
+<!--                <groupId>ch.qos.logback</groupId>-->
+<!--                <artifactId>logback-core</artifactId>-->
+<!--                <version>${logback.version}</version>-->
+<!--            </dependency>-->
         </dependencies>
     </dependencyManagement>
 
