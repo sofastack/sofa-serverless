@@ -18,7 +18,6 @@ public class BaseApplication {
 		// 需要保证在 slf4j static bind 之前，（如，首次 getLogger、类加载 SpringApplication 之前）
 		System.setProperty(ClassicConstants.LOGBACK_CONTEXT_SELECTOR,
 			"com.alipay.sofa.serverless.adapter.ArkLogbackContextSelector");
-//				"com.alipay.sofa.ark.common.adapter.ArkLogbackContextSelector");
 	}
 
 	private static Logger LOGGER = LoggerFactory.getLogger(BaseApplication.class);
