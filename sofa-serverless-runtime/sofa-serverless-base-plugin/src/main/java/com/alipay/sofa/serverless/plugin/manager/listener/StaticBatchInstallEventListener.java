@@ -18,6 +18,7 @@ package com.alipay.sofa.serverless.plugin.manager.listener;
 
 import com.alipay.sofa.ark.api.ClientResponse;
 import com.alipay.sofa.ark.api.ResponseCode;
+import com.alipay.sofa.ark.common.util.StringUtils;
 import com.alipay.sofa.serverless.arklet.core.ArkletComponentRegistry;
 import com.alipay.sofa.serverless.arklet.core.common.log.ArkletLogger;
 import com.alipay.sofa.serverless.arklet.core.common.log.ArkletLoggerFactory;
@@ -26,7 +27,6 @@ import com.alipay.sofa.serverless.arklet.core.common.model.BatchInstallResponse;
 import com.alipay.sofa.serverless.arklet.core.ops.UnifiedOperationService;
 import com.google.common.base.Preconditions;
 import lombok.SneakyThrows;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ApplicationContextEvent;
 import org.springframework.context.event.ContextRefreshedEvent;
@@ -43,18 +43,17 @@ import java.util.concurrent.atomic.AtomicBoolean;
 public class StaticBatchInstallEventListener implements
                                             ApplicationListener<ApplicationContextEvent> {
 
-    private static ArkletLogger LOGGER           = ArkletLoggerFactory.getDefaultLogger();
-
     // 合并部署是否已经完成，防止重复执行。
-    private AtomicBoolean       isBatchdDeployed = new AtomicBoolean(false);
+    private AtomicBoolean isBatchdDeployed = new AtomicBoolean(false);
 
     @SneakyThrows
     public void batchDeployFromLocalDir() {
         String absolutePath = System.getProperty("com.alipay.sofa.ark.static.biz.dir");
-        if (StringUtils.isBlank(absolutePath) || isBatchdDeployed.get()) {
+        if (StringUtils.isEmpty(absolutePath) || isBatchdDeployed.get()) {
             return;
         }
-        LOGGER.info("start to batch deploy from local dir:{}", absolutePath);
+        ArkletLoggerFactory.getDefaultLogger().info("start to batch deploy from local dir:{}",
+            absolutePath);
         UnifiedOperationService operationServiceInstance = ArkletComponentRegistry
             .getOperationServiceInstance();
 
@@ -62,8 +61,9 @@ public class StaticBatchInstallEventListener implements
             .batchInstall(BatchInstallRequest.builder().bizDirAbsolutePath(absolutePath).build());
         for (Map.Entry<String, ClientResponse> entry : batchInstallResponse.getBizUrlToResponse()
             .entrySet()) {
-            LOGGER.info("{}, {}, {}, BatchDeployResult", entry.getKey(), entry.getValue().getCode()
-                .toString(), entry.getValue().getMessage());
+            ArkletLoggerFactory.getDefaultLogger().info("{}, {}, {}, BatchDeployResult",
+                entry.getKey(), entry.getValue().getCode().toString(),
+                entry.getValue().getMessage());
         }
         isBatchdDeployed.set(true);
         Preconditions.checkState(batchInstallResponse.getCode() == ResponseCode.SUCCESS,
