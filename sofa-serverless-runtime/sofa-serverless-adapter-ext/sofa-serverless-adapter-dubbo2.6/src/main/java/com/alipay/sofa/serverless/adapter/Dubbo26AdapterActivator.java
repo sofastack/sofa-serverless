@@ -14,22 +14,3 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.alipay.sofa.serverless.adapter;
-
-import com.alipay.sofa.ark.spi.model.PluginContext;
-import com.alipay.sofa.ark.spi.service.PluginActivator;
-
-/**
- * @author lvjing2
- * @since 0.5.5
- */
-public class Dubbo26AdapterActivator implements PluginActivator {
-    @Override
-    public void start(PluginContext context) {
-    }
-
-    @Override
-    public void stop(PluginContext context) {
-        // no op
-    }
-}
