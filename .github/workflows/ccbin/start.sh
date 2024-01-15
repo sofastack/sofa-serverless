@@ -21,7 +21,7 @@ function kill_java_process() {
     done
 }
 
-set -e
+
 
 #dobbo common-model
 ROOTDir=$(pwd)
@@ -48,7 +48,7 @@ for TEST_DIR in $(find $(pwd) -name "$suiteReg");do
     echo "start clean old java processes"
     kill_java_process
 
-    baseJar=$(find . -name "*[base|bootstrap]-*.jar"|grep -v facade)
+    baseJar=$(find . -name "*[base|bootstrap]*.jar"|grep -v facade)
     echo "Deployed base app $baseJar"
     if [[ "$baseJar" == "" ]];then
       echo "找不到基座jar包！"
@@ -58,8 +58,11 @@ for TEST_DIR in $(find $(pwd) -name "$suiteReg");do
     sleep 5
 
     echo "Start health check"
-    bash $ROOTDir/.github/workflows/ccbin/healthcheck.sh
-
+    if echo $BaseDir | grep "apollo"; then
+      bash $ROOTDir/.github/workflows/ccbin/healthcheck.sh 8081
+    else
+      bash $ROOTDir/.github/workflows/ccbin/healthcheck.sh 8080
+    fi
     echo "Start module biz Test"
     bash $ROOTDir/.github/workflows/ccbin/moduletest.sh
 
@@ -68,5 +71,4 @@ for TEST_DIR in $(find $(pwd) -name "$suiteReg");do
   done
 done
 
-set +e
 
