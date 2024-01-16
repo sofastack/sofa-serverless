@@ -3,11 +3,13 @@ package com.alipay.sofa.base.rest;
 import com.alipay.sofa.biz.facade.Param;
 import com.alipay.sofa.biz.facade.Provider;
 import com.alipay.sofa.biz.facade.Result;
+import com.alipay.sofa.serverless.common.api.AutowiredFromBiz;
 import com.alipay.sofa.serverless.common.api.SpringServiceFinder;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestMethod;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -19,8 +21,27 @@ import java.util.Map;
 @RestController
 public class SampleController {
 
+    @AutowiredFromBiz(bizName = "biz1", bizVersion = "0.0.1-SNAPSHOT", name = "studentProvider")
+    private Provider studentProvider;
+
+    @AutowiredFromBiz(bizName = "biz1", name = "teacherProvider")
+    private Provider teacherProvider;
+
     @RequestMapping(value = "/", method = RequestMethod.GET)
     public String hello() {
+
+        Result tmp = studentProvider.provide(new Param());
+        System.out.println(tmp.getClass());
+        System.out.println(tmp.isSuccess());
+        System.out.println(tmp.getPeople().getClass());
+        System.out.println(tmp);
+
+        Result tmp1 = teacherProvider.provide(new Param());
+        System.out.println(tmp1.getClass());
+        System.out.println(tmp1.isSuccess());
+        System.out.println(tmp1.getPeople().getClass());
+        System.out.println(tmp1);
+
 
         Provider studentProvider = SpringServiceFinder.getModuleService("biz1", "0.0.1-SNAPSHOT",
                 "studentProvider", Provider.class);
