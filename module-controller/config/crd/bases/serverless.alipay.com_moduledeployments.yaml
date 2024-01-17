@@ -41,6 +41,11 @@ spec:
                   Important: Run "make" to regenerate code after modifying this file'
                 minLength: 1
                 type: string
+              confirmBatchNum:
+                default: 0
+                format: int32
+                minimum: 0
+                type: integer
               minReadySeconds:
                 format: int32
                 type: integer
