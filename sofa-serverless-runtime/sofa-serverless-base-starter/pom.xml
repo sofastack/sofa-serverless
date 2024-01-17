@@ -16,6 +16,11 @@
         <!-- include adapter libs first -->
         <dependency>
             <groupId>com.alipay.sofa.serverless</groupId>
+            <artifactId>sofa-serverless-adapter-logback</artifactId>
+            <version>${revision}</version>
+        </dependency>
+        <dependency>
+            <groupId>com.alipay.sofa.serverless</groupId>
             <artifactId>sofa-serverless-adapter-apollo</artifactId>
             <version>${revision}</version>
         </dependency>

@@ -10,7 +10,7 @@
 
     <properties>
         <sofa.ark.version>3.0.2-SNAPSHOT</sofa.ark.version>
-        <spring.boot.version>3.0.9</spring.boot.version>
+        <spring.boot.version>3.2.1</spring.boot.version>
         <revision>0.5.6-jdk17-SNAPSHOT</revision>
         <project.encoding>UTF-8</project.encoding>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
@@ -77,7 +77,6 @@
         <module>arklet-core</module>
         <module>arklet-springboot-starter</module>
         <module>sofa-serverless-adapter-ext</module>
-        <module>sofa-serverless-base-loader</module>
 	</modules>
 
     <dependencyManagement>
