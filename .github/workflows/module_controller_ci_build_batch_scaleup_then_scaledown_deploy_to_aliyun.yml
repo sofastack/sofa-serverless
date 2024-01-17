@@ -185,7 +185,7 @@ jobs:
             # 使用 kubectl get 命令获取资源对象的详细信息，并提取自定义字段的值
             field_value=$(kubectl get $moduledeploymentname -o custom-columns=PAUSE:.spec.pause --no-headers)
           
-            if [ "$field_value" == "$desired_field_value" ]; then
+            if [ "$field_value" == "0" ]; then
               echo "字段值已满足条件，执行分组确认"
               kubectl patch $moduledeploymentname -p '{"spec":{"pause":false}}' --type=merge
               exit 0
@@ -597,7 +597,7 @@ jobs:
             # 使用 kubectl get 命令获取资源对象的详细信息，并提取自定义字段的值
             field_value=$(kubectl get $moduledeploymentname -o custom-columns=PAUSE:.spec.pause --no-headers)
 
-            if [ "$field_value" == "$desired_field_value" ]; then
+            if [ "$field_value" == "0" ]; then
               echo "字段值已满足条件，执行分组确认"
               kubectl patch $moduledeploymentname -p '{"spec":{"pause":false}}' --type=merge
               exit 0
@@ -756,7 +756,7 @@ jobs:
             # 使用 kubectl get 命令获取资源对象的详细信息，并提取自定义字段的值
             field_value=$(kubectl get $moduledeploymentname -o custom-columns=PAUSE:.spec.pause --no-headers)
           
-            if [ "$field_value" == "$desired_field_value" ]; then
+            if [ "$field_value" == "0" ]; then
               echo "字段值已满足条件，执行分组确认"
               kubectl patch $moduledeploymentname -p '{"spec":{"pause":false}}' --type=merge
               exit 0
