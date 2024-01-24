@@ -33,6 +33,7 @@ import com.alipay.sofa.serverless.arklet.core.command.executor.ExecutorServiceMa
 import com.alipay.sofa.serverless.arklet.core.common.log.ArkletLoggerFactory;
 import com.alipay.sofa.serverless.arklet.core.common.model.BatchInstallRequest;
 import com.alipay.sofa.serverless.arklet.core.common.model.BatchInstallResponse;
+import com.alipay.sofa.serverless.common.util.OSUtils;
 import com.google.inject.Singleton;
 
 /**
@@ -67,7 +68,7 @@ public class UnifiedOperationServiceImpl implements UnifiedOperationService {
             BizOperation bizOperation = new BizOperation()
                 .setOperationType(BizOperation.OperationType.INSTALL);
 
-            bizOperation.putParameter(Constants.CONFIG_BIZ_URL, "file://" + bizUrl);
+            bizOperation.putParameter(Constants.CONFIG_BIZ_URL, OSUtils.getLocalFileProtocolPrefix() + bizUrl);
             Map<String, Object> mainAttributes = batchInstallHelper.getMainAttributes(bizUrl);
             bizOperation.setBizName((String) mainAttributes.get(Constants.ARK_BIZ_NAME));
             bizOperation.setBizVersion((String) mainAttributes.get(Constants.ARK_BIZ_VERSION));
