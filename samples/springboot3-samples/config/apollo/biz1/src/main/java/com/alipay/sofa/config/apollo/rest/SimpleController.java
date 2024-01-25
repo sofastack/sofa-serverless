@@ -13,7 +13,6 @@ public class SimpleController {
 
     @GetMapping("/getValue")
     public String getValue() {
-        //return dataConfig.getName();
-        return dataConfig.getValue();
+        return dataConfig.getName();
     }
 }

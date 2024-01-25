@@ -24,8 +24,8 @@ public class PropertiesRefresher {
     public void changeListener(ConfigChangeEvent changeEvent) {
         changeEvent.changedKeys().stream().forEach(changeKey -> {
             ConfigChange configChange = changeEvent.getChange(changeKey);
-            log.info("Apollo biz1 config change, property namespace: [{}], propertyName:[{}], oldValue:{}, newValue:{}",
-                    configChange.getNamespace(), configChange.getPropertyName(), configChange.getOldValue(), configChange.getNewValue());
+            log.info("Apollo biz1 config change,  propertyName:[{}], oldValue:{}, newValue:{}",
+                     configChange.getPropertyName(), configChange.getOldValue(), configChange.getNewValue());
         });
         refreshScope.refreshAll();
     }

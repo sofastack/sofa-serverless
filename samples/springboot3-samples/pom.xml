@@ -41,6 +41,12 @@
         <module>msg/kafka/biz2</module>
         <module>db/mybatis/base</module>
         <module>db/mybatis/biz1</module>
+        <module>web/webflux/biz</module>
+        <module>web/webflux/base</module>
+        <module>web/webflux/biz</module>
+        <module>config/apollo/base</module>
+        <module>config/apollo/biz1</module>
+        <module>config/apollo/biz2</module>
     </modules>
 
     <dependencyManagement>

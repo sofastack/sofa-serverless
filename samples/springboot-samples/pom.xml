@@ -30,32 +30,32 @@
     </properties>
 
     <modules>
-        <module>logging/log4j2/base</module>
+<!--        <module>logging/log4j2/base</module>
         <module>logging/log4j2/biz1</module>
         <module>logging/log4j2/biz2</module>
         <module>logging/logback/base</module>
         <module>logging/logback/biz1</module>
-        <module>web/tomcat</module>
+        <module>web/tomcat</module>-->
         <module>web/webflux/base</module>
         <module>web/webflux/biz</module>
-        <module>service</module>
-        <module>slimming/log4j2</module>
-        <module>msg/kafka/base</module>
-        <module>msg/kafka/biz1</module>
-        <module>msg/kafka/biz2</module>
-        <module>msg/rocketmq/base</module>
-        <module>msg/rocketmq/biz1</module>
-        <module>db/mybatis/base</module>
-        <module>db/mybatis/biz1</module>
-        <module>cache/redis/sample-redis-base</module>
-        <module>cache/redis/sample-redis-biz</module>
-        <module>cache/ehcache</module>
-        <module>db/mongo/base</module>
-        <module>db/mongo/biz1</module>
-        <module>db/mongo/biz2</module>
-        <module>config/apollo</module>
-        <module>config/nacos</module>
-        <module>springcloud/gateway</module>
+<!--        <module>service</module>-->
+<!--        <module>slimming/log4j2</module>-->
+<!--        <module>msg/kafka/base</module>-->
+<!--        <module>msg/kafka/biz1</module>-->
+<!--        <module>msg/kafka/biz2</module>-->
+<!--        <module>msg/rocketmq/base</module>-->
+<!--        <module>msg/rocketmq/biz1</module>-->
+<!--        <module>db/mybatis/base</module>-->
+<!--        <module>db/mybatis/biz1</module>-->
+<!--        <module>cache/redis/sample-redis-base</module>-->
+<!--        <module>cache/redis/sample-redis-biz</module>-->
+<!--        <module>cache/ehcache</module>-->
+<!--        <module>db/mongo/base</module>-->
+<!--        <module>db/mongo/biz1</module>-->
+<!--        <module>db/mongo/biz2</module>-->
+<!--        <module>config/apollo</module>-->
+<!--        <module>config/nacos</module>-->
+<!--        <module>springcloud/gateway</module>-->
     </modules>
 
     <dependencyManagement>
