@@ -15,7 +15,6 @@
     <modules>
         <module>sofa-serverless-adapter-logback</module>
         <module>sofa-serverless-adapter-apollo</module>
-        <module>sofa-serverless-adapter-dubbo2.6</module>
     </modules>
 
 <!--    <build>-->
