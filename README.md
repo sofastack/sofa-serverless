@@ -2,7 +2,8 @@
 ![license](https://img.shields.io/badge/license-Apache--2.0-green.svg)
 ![Maven Central](https://img.shields.io/maven-central/v/com.alipay.sofa.serverless/sofa-serverless-runtime)
 
-完整产品介绍欢迎查阅 [SOFAServerless 官网](https://sofaserverless.gitee.io/home/)
+SOFAServerless 品牌全新升级为 Koupleless，欢迎访问全新 GitHub 地址：https://github.com/koupleless/koupleless
+完整产品介绍欢迎查阅 [Koupleless 全新官网](https://koupleless.gitee.io/home/)
 
 <br/>
 
