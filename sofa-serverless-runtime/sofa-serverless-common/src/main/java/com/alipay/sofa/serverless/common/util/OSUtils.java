@@ -14,39 +14,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.alipay.sofa.serverless.arklet.core.common.model;
-
-import com.alipay.sofa.ark.api.ClientResponse;
-import com.alipay.sofa.ark.api.ResponseCode;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
-import java.util.Map;
+package com.alipay.sofa.serverless.common.util;
 
 /**
- * 合并部署响应。
- * @author CodeNoobKingKc2
- * @version $Id: BatchInstallResponse, v 0.1 2023-11-20 15:19 CodeNoobKingKc2 Exp $
+ * @author CodeNoobKing
+ * @data 2024/1/22
  */
-@NoArgsConstructor
-@AllArgsConstructor
-@Data
-@Builder
-public class BatchInstallResponse {
-    /**
-     * 响应码。
-     */
-    private ResponseCode                code;
+public class OSUtils {
+
+    static String OS_NAME_KEY = "os.name"; // 操作系统名称。
 
     /**
-     * 响应消息。
+     * 获取本地文件协议前缀。
+     *
+     * @return 本地文件协议前缀。
      */
-    private String                      message;
-
-    /**
-     * 业务文件对应的响应。
-     */
-    private Map<String, ClientResponse> bizUrlToResponse;
+    public static String getLocalFileProtocolPrefix() {
+        String os = System.getProperty(OS_NAME_KEY);
+        if (os.toLowerCase().startsWith("win")) {
+            return "file:///";
+        } else {
+            return "file://";
+        }
+    }
 }

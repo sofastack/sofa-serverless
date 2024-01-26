@@ -14,39 +14,32 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.alipay.sofa.serverless.arklet.core.common.model;
+package com.alipay.sofa.serverless.common.util;
 
-import com.alipay.sofa.ark.api.ClientResponse;
-import com.alipay.sofa.ark.api.ResponseCode;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
-import java.util.Map;
+import org.junit.Assert;
+import org.junit.Test;
 
 /**
- * 合并部署响应。
- * @author CodeNoobKingKc2
- * @version $Id: BatchInstallResponse, v 0.1 2023-11-20 15:19 CodeNoobKingKc2 Exp $
+ * @author CodeNoobKing
+ * @data 2024/1/22
  */
-@NoArgsConstructor
-@AllArgsConstructor
-@Data
-@Builder
-public class BatchInstallResponse {
-    /**
-     * 响应码。
-     */
-    private ResponseCode                code;
+public class OSUtilsTest {
 
-    /**
-     * 响应消息。
-     */
-    private String                      message;
+    @Test
+    public void testGetLocalFileProtocolPrefix() {
+        try {
+            OSUtils.OS_NAME_KEY = "mock.os.name";
+            System.setProperty("mock.os.name", "Windows 7");
+            Assert.assertEquals("file:///", OSUtils.getLocalFileProtocolPrefix());
 
-    /**
-     * 业务文件对应的响应。
-     */
-    private Map<String, ClientResponse> bizUrlToResponse;
+            System.setProperty("mock.os.name", "Linux");
+            Assert.assertEquals("file://", OSUtils.getLocalFileProtocolPrefix());
+
+            System.setProperty("mock.os.name", "Mac OS X");
+            Assert.assertEquals("file://", OSUtils.getLocalFileProtocolPrefix());
+        } finally {
+            OSUtils.OS_NAME_KEY = "os.name";
+        }
+
+    }
 }
