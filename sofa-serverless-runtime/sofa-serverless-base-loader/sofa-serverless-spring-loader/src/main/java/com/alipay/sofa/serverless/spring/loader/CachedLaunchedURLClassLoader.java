@@ -24,8 +24,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 
-import org.springframework.boot.loader.LaunchedURLClassLoader;
-import org.springframework.boot.loader.archive.Archive;
+import org.springframework.boot.loader.launch.Archive;
+import org.springframework.boot.loader.launch.LaunchedClassLoader;
 
 /**
  * A cached LaunchedURLClassLoader to accelerate load classes and resources
@@ -33,7 +33,7 @@ import org.springframework.boot.loader.archive.Archive;
  * @daye 2023/12/26
  * @version CachedLaunchedURLClassLoader.java, v 0.1 2023年12月26日 14:45 syd
  */
-public class CachedLaunchedURLClassLoader extends LaunchedURLClassLoader {
+public class CachedLaunchedURLClassLoader extends LaunchedClassLoader {
     private static final int                   ENTRY_CACHE_SIZE  = Integer.getInteger(
                                                                      "serverless.class.cache.size",
                                                                      6000);

@@ -14,34 +14,22 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.alipay.sofa.serverless.spring.loader;
+package com.alipay.sofa.serverless.adapter;
+
+import com.alipay.sofa.ark.spi.model.PluginContext;
+import com.alipay.sofa.ark.spi.service.PluginActivator;
 
 /**
- *
- * @author syd
- * @version JarLauncher.java, v 0.1 2023年12月26日 14:54 syd
+ * @author lvjing2
+ * @since 0.5.5
  */
-import java.net.URL;
-import java.util.Collection;
-
-/**
- * A JarLauncher to load classes with CachedLaunchedURLClassLoader
- *
- * @author zjulbj
- * @daye 2023/12/26
- * @author bingjie.lbj
- */
-public class JarLauncher extends org.springframework.boot.loader.launch.JarLauncher {
-    public JarLauncher() throws Exception {
-    }
-
-    public static void main(String[] args) throws Exception {
-        new JarLauncher().launch(args);
+public class Log4j2AdapterActivator implements PluginActivator {
+    @Override
+    public void start(PluginContext context) {
     }
 
     @Override
-    protected ClassLoader createClassLoader(Collection<URL> urls) throws Exception {
-        return new CachedLaunchedURLClassLoader(isExploded(), getArchive(),
-            urls.toArray(new URL[0]), getClass().getClassLoader());
+    public void stop(PluginContext context) {
+        // no op
     }
 }
