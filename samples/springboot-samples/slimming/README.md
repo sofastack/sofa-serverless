@@ -83,9 +83,6 @@ biz1 包含两个打包插件，一个常规 springboot 插件, 构建普通 spr
             <skipArkExecutable>true</skipArkExecutable>
             <outputDirectory>./target</outputDirectory>
             <bizName>biz1</bizName>
-            <!-- packExcludesConfig	模块瘦身配置，文件名自定义，和配置对应即可-->
-            <!--					配置文件位置：biz1/conf/ark/rules.txt-->
-            <packExcludesConfig>rules.txt</packExcludesConfig>
             <webContextPath>biz1</webContextPath>
             <declaredMode>true</declaredMode>
             <!--					打包、安装和发布 ark biz-->
@@ -105,6 +102,25 @@ biz1 包含两个打包插件，一个常规 springboot 插件, 构建普通 spr
 </plugins>
 </build>
 ```
+
+瘦身配置在 biz1 的 `biz1/src/main/resources/application.properties` 文件中,
+```
+# 按 jar 名称（ artifactId:version ）排除，多个 jar 按照逗号分隔，可以使用换行符号
+excludes=tracer-core:3.0.10,tracer-core:3.0.11
+
+# 按 artifactId 排除，支持通配符，多个 artifactId 按照逗号分隔，可以使用换行符号
+excludeArtifactIds=commons-collections,commons-httpclient,commons-io,commons-lang
+
+# 按 groupId 排除，支持通配符，多个 group 按照逗号分隔，可以使用换行符号
+excludeGroupIds=aopalliance*,asm*,cglib*,com.alibaba.common.lang*,com.alibaba.common.resourcebundle*,com.alibaba.tbase*,com.alipay*,com.antcloud.antvip*,com.caucho.hessian*,com.ctc.wstx*,\
+  com.fasterxml*,com.google.code*,com.google.common*,com.google.gson*,com.google.guava*,com.google.http-client*,com.google.inject*,com.google.protobuf*,com.ibatis*,com.iwallet.biz*,com.lmax*,\
+  com.taobao.config*,com.taobao.hsf*,com.taobao.notify*,com.taobao.remoting*,com.taobao.tair*,groovy*,io.fury*,io.grpc*,io.mosn.layotto*,io.netty*,io.openmessaging*,io.prometheus*,javax*,javax.el*,\
+  javax.script*,javax.servlet*,javax.validation*,loccs-bcprov*,log4j*,mysql*,net.sf.acegisecurity*,net.sf.cglib*,netty*,ognl*,org.aopalliance*,org.apache*,org.aspectj*,org.codehaus*,org.codehaus.groovy*,\
+  org.codehaus.xfire*,org.dom4j*,org.hibernate.validator*,org.junit*,org.mvel2*,org.mybatis*,org.mybatis.spring*,org.mybatis.spring.boot.autoconfigure*,org.projectlombok*,org.quartz*,org.reflections*,\
+  org.slf4j*,org.springframework*,org.yaml*,xerces*,xml-apis*,xpp3*,jakarta*,ch.qos.logback*,org.latencyutils*,org.hdrhistogram*,io.micrometer*,ch.qos.logback*,com.squareup.okhttp3*,com.squareup.okhttp*,\
+  net.sf.ehcache*,redis.clients*
+```
+    
 
 ## 实验任务
 ### 执行 mvn clean package -DskipTests
