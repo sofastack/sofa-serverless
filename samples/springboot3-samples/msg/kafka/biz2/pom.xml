@@ -43,13 +43,12 @@
             <artifactId>spring-kafka</artifactId>
             <scope>provided</scope>
         </dependency>
-
-<!--        <dependency>-->
-<!--            <groupId>com.alipay.sofa.serverless</groupId>-->
-<!--            <artifactId>sofa-serverless-app-starter</artifactId>-->
-<!--            <version>${sofa.serverless.runtime.version}</version>-->
-<!--            <scope>provided</scope>-->
-<!--        </dependency>-->
+        <dependency>
+            <groupId>com.alipay.sofa.serverless</groupId>
+            <artifactId>sofa-serverless-app-starter</artifactId>
+            <version>${sofa.serverless.runtime.version}</version>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
 
     <build>

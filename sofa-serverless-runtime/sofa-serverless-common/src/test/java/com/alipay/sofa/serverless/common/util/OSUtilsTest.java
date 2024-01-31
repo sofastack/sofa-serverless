@@ -18,7 +18,6 @@ package com.alipay.sofa.serverless.common.util;
 
 import org.junit.Assert;
 import org.junit.Test;
-
 /**
  * @author CodeNoobKing
  * @data 2024/1/22
@@ -40,6 +39,5 @@ public class OSUtilsTest {
         } finally {
             OSUtils.OS_NAME_KEY = "os.name";
         }
-
     }
 }
