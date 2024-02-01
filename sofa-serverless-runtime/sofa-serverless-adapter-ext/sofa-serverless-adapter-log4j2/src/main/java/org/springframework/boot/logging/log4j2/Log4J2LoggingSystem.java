@@ -47,14 +47,8 @@ import org.apache.logging.log4j.message.Message;
 import org.springframework.boot.context.properties.bind.BindResult;
 import org.springframework.boot.context.properties.bind.Bindable;
 import org.springframework.boot.context.properties.bind.Binder;
-import org.springframework.boot.logging.LogFile;
-import org.springframework.boot.logging.LogLevel;
-import org.springframework.boot.logging.LoggerConfiguration;
+import org.springframework.boot.logging.*;
 import org.springframework.boot.logging.LoggerConfiguration.LevelConfiguration;
-import org.springframework.boot.logging.LoggingInitializationContext;
-import org.springframework.boot.logging.LoggingSystem;
-import org.springframework.boot.logging.LoggingSystemFactory;
-import org.springframework.boot.logging.Slf4JLoggingSystem;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.util.Assert;
@@ -72,7 +66,7 @@ import org.springframework.util.StringUtils;
  * @author Ben Hale
  * @since 1.2.0
  */
-public class Log4J2LoggingSystem extends Slf4JLoggingSystem {
+public class Log4J2LoggingSystem extends AbstractLoggingSystem {
 
     private static final String           FILE_PROTOCOL = "file";
 
@@ -204,7 +198,9 @@ public class Log4J2LoggingSystem extends Slf4JLoggingSystem {
     @Override
     protected void loadConfiguration(LoggingInitializationContext initializationContext,
                                      String location, LogFile logFile) {
-        super.loadConfiguration(initializationContext, location, logFile);
+        if (initializationContext != null) {
+            applySystemProperties(initializationContext.getEnvironment(), logFile);
+        }
         loadConfiguration(location, logFile, getOverrides(initializationContext));
     }
 

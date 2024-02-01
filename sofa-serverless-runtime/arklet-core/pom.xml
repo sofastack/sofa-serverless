@@ -17,6 +17,11 @@
             <groupId>com.alipay.sofa</groupId>
             <artifactId>sofa-ark-api</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.alipay.sofa.serverless</groupId>
+            <artifactId>sofa-serverless-common</artifactId>
+            <version>${revision}</version>
+        </dependency>
 
         <dependency>
             <groupId>com.github.oshi</groupId>
@@ -69,13 +74,6 @@
             <artifactId>mockito-core</artifactId>
             <scope>test</scope>
         </dependency>
-
-        <dependency>
-            <groupId>org.mockito</groupId>
-            <artifactId>mockito-inline</artifactId>
-            <scope>test</scope>
-        </dependency>
-
     </dependencies>
 
 </project>
