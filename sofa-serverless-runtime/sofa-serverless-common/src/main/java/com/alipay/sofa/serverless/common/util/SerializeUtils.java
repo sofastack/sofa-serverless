@@ -23,6 +23,10 @@ import com.caucho.hessian.io.SerializerFactory;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.lang.reflect.Array;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * @author: yuanyuan
@@ -30,7 +34,17 @@ import java.io.IOException;
  */
 public class SerializeUtils {
 
-    public static Object serializeTransform(Object source, ClassLoader targetClassLoader) {
+    private static Object _serializeTransform(Object source, ClassLoader targetClassLoader) {
+        try {
+            if (null == source
+                || source.getClass().getClassLoader() == targetClassLoader
+                || targetClassLoader.loadClass(source.getClass().getName()).getClassLoader() == source
+                    .getClass().getClassLoader()) {
+                return source;
+            }
+        } catch (ClassNotFoundException e) {
+            throw new RuntimeException(e);
+        }
         Object target;
         ClassLoader currentContextClassloader = Thread.currentThread().getContextClassLoader();
         try {
@@ -55,5 +69,23 @@ public class SerializeUtils {
             Thread.currentThread().setContextClassLoader(currentContextClassloader);
         }
         return target;
+    }
+
+    public static Object serializeTransform(Object originalSource, ClassLoader targetClassLoader) {
+        if (originalSource.getClass().isArray()) {
+            Object[] sources = (Object[]) originalSource;
+            if (sources.length > 0) {
+                Object[] targets = (Object[]) Array.newInstance(sources.getClass()
+                    .getComponentType(), sources.length);
+                for (int i = 0; i < sources.length; i++) {
+                    targets[i] = _serializeTransform(sources[i], targetClassLoader);
+                }
+                return (Object) targets;
+            } else {
+                return originalSource;
+            }
+        } else {
+            return _serializeTransform(originalSource, targetClassLoader);
+        }
     }
 }
