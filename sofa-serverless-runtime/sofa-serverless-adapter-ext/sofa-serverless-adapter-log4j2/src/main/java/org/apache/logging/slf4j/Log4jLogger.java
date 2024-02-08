@@ -450,14 +450,13 @@ public class Log4jLogger implements LocationAwareLogger, Serializable {
      */
     private ExtendedLogger getLogger() {
         ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
-        LoggerContext loggerContext = LOGGER_CONTEXT_MAP.get(classLoader);
-        if (loggerContext == null) {
-            loggerContext = LogManager.getContext(Thread.currentThread().getContextClassLoader(),
-                false);
-            LOGGER_CONTEXT_MAP.put(classLoader, loggerContext);
-        }
         ExtendedLogger extendedLogger = loggerMap.get(classLoader);
         if (extendedLogger == null) {
+            LoggerContext loggerContext = LOGGER_CONTEXT_MAP.get(classLoader);
+            if (loggerContext == null) {
+                loggerContext = LogManager.getContext(classLoader, false);
+                LOGGER_CONTEXT_MAP.put(classLoader, loggerContext);
+            }
             extendedLogger = loggerContext.getLogger(this.name);
             loggerMap.put(classLoader, extendedLogger);
         }
