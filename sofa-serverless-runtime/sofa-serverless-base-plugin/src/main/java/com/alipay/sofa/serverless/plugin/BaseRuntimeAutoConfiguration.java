@@ -43,7 +43,7 @@ public class BaseRuntimeAutoConfiguration {
 
     @Bean
     @ConditionalOnMissingBean
-    @ConditionalOnNotMasterBiz
+    //    @ConditionalOnNotMasterBiz
     public ArkAutowiredBeanPostProcessor arkAutowiredBeanPostProcessor() {
         return new ArkAutowiredBeanPostProcessor();
     }
